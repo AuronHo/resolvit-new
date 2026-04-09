@@ -1,0 +1,133 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+
+// 1. We extend "ChangeNotifier". This class can "notify"
+//    the UI when its data changes.
+class AuthController extends ChangeNotifier {
+
+  final String apiUrl = "http://10.0.2.2:8080/api/register";
+
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController passwordController = TextEditingController();
+
+  // --- STATE VARIABLES ---
+
+  // 2. We make the state "private"
+  bool _isPasswordVisible = false;
+  bool _agreedToTerms = false;
+
+  // 3. We create public "getters" for the UI to read the state
+  bool get isPasswordVisible => _isPasswordVisible;
+  bool get agreedToTerms => _agreedToTerms;
+
+  // --- LOGIC METHODS ---
+
+  // 4. This method updates the state and "notifies" the UI
+  void togglePasswordVisibility() {
+    _isPasswordVisible = !_isPasswordVisible;
+    notifyListeners(); // This tells the UI to rebuild!
+  }
+
+  // 5. This method also updates the state and notifies
+  void setAgreedToTerms(bool? value) {
+    _agreedToTerms = value ?? false;
+    notifyListeners(); // This tells the UI to rebuild!
+  }
+
+  // 6. This logic was moved from the screen
+  Future<void> launchTermsUrl() async {
+    final Uri url = Uri.parse('https://your-website.com/terms');
+    if (!await launchUrl(url)) {
+      // It's better to return an error or let the UI
+      // handle showing a SnackBar
+      throw 'Could not launch $url';
+    }
+  }
+
+  // 7. This is your main registration logic.
+  // We'll make it return a boolean for success/failure
+  // so the UI can show the right SnackBar.
+  Future<bool> registerUser() async {
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "name": nameController.text,
+          "email": emailController.text,
+          "password": passwordController.text,
+          "role": "customer"
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        // Bisa tambahkan log untuk debug
+        print("Gagal Register: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error koneksi ke Backend: $e");
+      return false;
+    }
+  }
+
+  // Fungsi Login Dummy
+  Future<bool> loginUser(String email, String password) async {
+    try {
+      final response = await http.post(
+        Uri.parse("http://10.0.2.2:8080/api/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        String token = data['token'];
+
+        // SIMPAN TOKEN KE MEMORI HP
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+
+        return true;
+      } else {
+        print("Login Gagal: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("Error Koneksi Login: $e");
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> sendForgotPasswordOTP(String email) async {
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:8080/api/forgot-password"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"email": email}),
+    );
+    return jsonDecode(response.body);
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String email, String otp, String newPassword) async {
+    final response = await http.post(
+      Uri.parse("http://10.0.2.2:8080/api/reset-password"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "email": email,
+        "otp": otp,
+        "new_password": newPassword,
+      }),
+    );
+    return jsonDecode(response.body);
+  }
+}
