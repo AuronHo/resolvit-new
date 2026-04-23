@@ -24,22 +24,23 @@ class _HomeScreenState extends State<HomeScreen> {
 Future<void> _fetchRecommendations() async {
     try {
       // 1. Panggil API (Sekarang return-nya adalah MAP/Paket)
-      final response = await ApiService.searchServices("terbaik"); 
+      final response = await ApiService.getRecommendations(); 
       
       if (!mounted) return;
       
       setState(() {
-        // 2. Ambil hanya bagian 'results' dari dalam paket
+        // 2. Masukkan array 'results' dari JSON ke variabel list Flutter
         _recommendations = response['results']; 
-        
-        // Catatan: Untuk rekomendasi awal, biasanya kita abaikan 'message' 
-        // karena AI suggestion hanya muncul kalau user mengetik pencarian aneh.
-        
         _isLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+      
+      // (Opsional) Tampilkan pesan error kalau server mati
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to load recommendations'), backgroundColor: Colors.red),
+      );
     }
   }
   @override

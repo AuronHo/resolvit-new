@@ -26,6 +26,8 @@ func main() {
 	r.POST("/api/forgot-password", controllers.ForgotPassword)
 	r.POST("/api/reset-password", controllers.ResetPassword)
 	r.POST("/api/verify-otp", controllers.VerifyOTP)
+	r.GET("/api/services/recommendations", controllers.GetRecommendations)
+	r.GET("/api/services/category", controllers.GetServicesByCategory)
 
 	// AREA VIP (Dijaga oleh Middleware)
 	// Perhatikan: Kita selipkan "middlewares.RequireAuth" sebelum fungsi utama
