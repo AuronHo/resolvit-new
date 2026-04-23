@@ -52,4 +52,40 @@ class ApiService {
       throw Exception('Gagal terhubung. Cek Server Python / Ngrok / IP.');
     }
   }
+
+  static Future<Map<String, dynamic>> getRecommendations() async {
+    try {
+      // Ingat: Gunakan 10.0.2.2 jika pakai Emulator Android
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8080/api/services/recommendations'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Gagal mengambil rekomendasi: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error koneksi: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getServicesByCategory(String categoryName, {int page = 1}) async {
+    try {
+      final String encodedCategory = Uri.encodeComponent(categoryName);
+      // Tambahkan &page=$page ke URL
+      final Uri url = Uri.parse('http://10.0.2.2:8080/api/services/category?name=$encodedCategory&page=$page');
+      
+      final response = await http.get(url, headers: {'Content-Type': 'application/json'});
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Gagal mengambil data: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Error koneksi: $e');
+    }
+  }
 }

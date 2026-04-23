@@ -136,11 +136,7 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const AuthWelcomeScreen(),
         '/create_account': (context) => const CreateAccountScreen(),
         '/home': (context) => const MainNavigationShell(),
-        '/category_list': (context) {
-          // Mengambil argumen judul kategori yang dikirim
-          final title = ModalRoute.of(context)!.settings.arguments as String? ?? 'Services';
-          return CategoryListScreen(categoryTitle: title);
-        },
+        '/category_list': (context) => const CategoryListScreen(),
         '/service_detail': (context) => const ServiceDetailScreen(),
         '/login': (context) => const LoginScreen(), 
         '/reset_password': (context) => const ResetPasswordScreen(),

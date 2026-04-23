@@ -1,41 +1,93 @@
 import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import 'widgets/service_card.dart';
+import '../../../services/api_service.dart';
 
-class CategoryListScreen extends StatelessWidget {
-  // Menerima judul kategori yang diklik
-  final String categoryTitle;
+class CategoryListScreen extends StatefulWidget {
+  const CategoryListScreen({super.key});
 
-  const CategoryListScreen({super.key, required this.categoryTitle});
+  @override
+  State<CategoryListScreen> createState() => _CategoryListScreenState();
+}
 
-  // --- GUNAKAN DATA DUMMY YANG SAMA ---
-  final List<Map<String, dynamic>> _services = const [
-    {
-      'title': 'Buana Phone Service',
-      'specialty': 'Speciality in phone service',
-      'price': 'Rp 50.000',
-      'rating': '5',
-      'isOpen': true,
-      'image': 'https://loremflickr.com/320/240/computer?random=10'
-    },
-    {
-      'title': 'Mitra Komputer',
-      'specialty': 'Laptop & PC Repair',
-      'price': 'Rp 75.000',
-      'rating': '4.8',
-      'isOpen': true,
-      'image': 'https://loremflickr.com/320/240/phone?random=11'
-    },
-    {
-      'title': 'Jasa Web Kilat',
-      'specialty': 'Web Development',
-      'price': 'Rp 500.000',
-      'rating': '4.9',
-      'isOpen': false,
-      'image': 'https://loremflickr.com/320/240/phone?random=12'
-    },
-    // ... tambahkan data dummy lainnya jika perlu
-  ];
+class _CategoryListScreenState extends State<CategoryListScreen> {
+  String? _categoryTitle;
+  
+  // State untuk Pagination
+  final List<dynamic> _services = [];
+  int _currentPage = 1;
+  bool _isLoading = true; // Loading awal
+  bool _isFetchingMore = false; // Loading saat scroll ke bawah
+  bool _hasMoreData = true; // Cek apakah data sudah habis
+
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Dengarkan saat user scroll ke bawah
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _fetchMoreServices();
+      }
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_categoryTitle == null) {
+      _categoryTitle = ModalRoute.of(context)!.settings.arguments as String;
+      _fetchInitialServices();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  // Tarik data halaman pertama (10 data)
+  Future<void> _fetchInitialServices() async {
+    try {
+      final response = await ApiService.getServicesByCategory(_categoryTitle!, page: 1);
+      if (!mounted) return;
+
+      final newItems = response['results'] ?? [];
+      setState(() {
+        _services.addAll(newItems);
+        _isLoading = false;
+        _hasMoreData = newItems.length == 10; // Jika < 10, berarti data sudah habis
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
+
+  // Tarik data selanjutnya saat di-scroll
+  Future<void> _fetchMoreServices() async {
+    if (_isFetchingMore || !_hasMoreData) return;
+
+    setState(() => _isFetchingMore = true);
+    _currentPage++;
+
+    try {
+      final response = await ApiService.getServicesByCategory(_categoryTitle!, page: _currentPage);
+      if (!mounted) return;
+
+      final newItems = response['results'] ?? [];
+      setState(() {
+        _services.addAll(newItems);
+        _isFetchingMore = false;
+        _hasMoreData = newItems.length == 10;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isFetchingMore = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +95,7 @@ class CategoryListScreen extends StatelessWidget {
       backgroundColor: const Color(0xFFF5F5F5),
       body: Column(
         children: [
-          // --- HEADER SECTION (BIRU DENGAN TOMBOL KEMBALI) ---
+          // --- HEADER SECTION (TIDAK BERUBAH) ---
           Container(
             padding: const EdgeInsets.only(top: 50, left: 24, right: 24, bottom: 30),
             decoration: const BoxDecoration(
@@ -59,18 +111,15 @@ class CategoryListScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                // Tombol Kembali (Putih)
                 IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.white),
                   onPressed: () => Navigator.pop(context),
                 ),
                 const SizedBox(width: 10),
-                // Search Bar
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
-                      // Menggunakan judul kategori sebagai hint text
-                      hintText: 'Search in $categoryTitle',
+                      hintText: 'Search in ${_categoryTitle ?? 'Category'}',
                       hintStyle: TextStyle(color: Colors.grey[500]),
                       fillColor: Colors.white,
                       filled: true,
@@ -87,24 +136,46 @@ class CategoryListScreen extends StatelessWidget {
             ),
           ),
 
-          // --- LIST OF SERVICES ---
+          // --- LIST OF SERVICES DENGAN INFINITE SCROLL ---
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.only(top: 20),
-              itemCount: _services.length,
-              itemBuilder: (context, index) {
-                final item = _services[index];
-                return ServiceCard(
-                  title: item['title'],
-                  specialty: item['specialty'],
-                  price: item['price'],
-                  rating: item['rating'],
-                  isOpen: item['isOpen'],
-                  imageUrl: 'https://loremflickr.com/320/240/technician?lock=$index',
-                  onTap: () => Navigator.pushNamed(context, '/service_detail'),
-                );
-              },
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator(color: kPrimaryBlue))
+                : _services.isEmpty
+                    ? const Center(child: Text('Belum ada jasa di kategori ini.'))
+                    : ListView.builder(
+                        controller: _scrollController, // Pasang Controller di sini
+                        padding: const EdgeInsets.only(top: 20, bottom: 20),
+                        itemCount: _services.length + (_hasMoreData ? 1 : 0), // Tambah 1 untuk loading spinner di bawah
+                        itemBuilder: (context, index) {
+                          
+                          // Jika sampai di index terakhir dan masih ada data, tampilkan loading kecil
+                          if (index == _services.length) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(child: CircularProgressIndicator(color: kPrimaryBlue)),
+                            );
+                          }
+
+                          final item = _services[index];
+                          
+                          // RANDOM FOTO CERDAS: Gunakan ID agar gambarnya konsisten
+                          final randomId = item['JasaID'] ?? index;
+                          final String randomImageUrl = 'https://loremflickr.com/320/240/technician,computer?random=$randomId';
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                            child: ServiceCard(
+                              title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
+                              specialty: item['Kategori'] ?? 'Umum',
+                              price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
+                              rating: item['RatingRataRata']?.toString() ?? '0.0',
+                              isOpen: item['IsOpen'] ?? true,
+                              imageUrl: item['ImageUrl'] ?? randomImageUrl,
+                              onTap: () => Navigator.pushNamed(context, '/service_detail'),
+                            ),
+                          );
+                        },
+                      ),
           ),
         ],
       ),
