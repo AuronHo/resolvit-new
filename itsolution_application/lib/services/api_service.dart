@@ -88,4 +88,47 @@ class ApiService {
       throw Exception('Error koneksi: $e');
     }
   }
+
+  static Future<Map<String, dynamic>> getSavedServices({required int userId}) async {
+    try {
+      final url = Uri.parse('http://10.0.2.2:8080/api/services/saved?user_id=$userId');
+      print("Mencoba GET ke URL: $url"); // CCTV 1
+
+      final response = await http.get(
+        url,
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      print("Status Code dari Server: ${response.statusCode}"); // CCTV 2
+      print("Body dari Server: ${response.body}"); // CCTV 3
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        // Sekarang error-nya akan mencetak alasan dari Golang!
+        throw Exception('Server menolak dengan status ${response.statusCode}. Alasan: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Error koneksi: $e');
+    }
+  }
+
+  static Future<void> toggleSaveService({required int userId, required int jasaId}) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://10.0.2.2:8080/api/services/save'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'jasa_id': jasaId,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Gagal toggle bookmark');
+      }
+    } catch (e) {
+      throw Exception('Error koneksi: $e');
+    }
+  }
 }

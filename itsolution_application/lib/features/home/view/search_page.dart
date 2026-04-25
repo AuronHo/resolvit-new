@@ -167,6 +167,8 @@ class _SearchPageState extends State<SearchPage> {
                             // MAPPING SESUAI DATABASE PYTHON
                             // Kita pakai operator ?? untuk handle nilai null agar tidak error
                             return ServiceCard(
+                              jasaId: item['JasaID'],
+                              initialIsSaved: item['IsBookmarked'] == true,
                               title: item['NamaJasa'] ?? 'Tanpa Nama',
                               specialty: item['Kategori'] ?? 'Umum',
                               // Format harga: Rp 50000 -> Rp 5.000.000 (ideally pakai formatter, ini basic)

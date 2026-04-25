@@ -15,16 +15,21 @@ import (
 // GetRecommendations fetches top-rated services for the Home Screen
 func GetRecommendations(c *gin.Context) {
 	var services []models.Service
+	userID := 1 // Dummy User ID (Nanti diganti dinamis saat fitur Login selesai)
 
-	// Fetch 5 services, ordered by the highest rating
-	err := config.DB.Order("\"RatingRataRata\" DESC").Limit(5).Find(&services).Error
+	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
+	err := config.DB.Table("services").
+		Select("services.*, CASE WHEN saved_services.id IS NOT NULL THEN true ELSE false END as \"IsBookmarked\"").
+		Joins("LEFT JOIN saved_services ON services.\"JasaID\" = saved_services.jasa_id AND saved_services.user_id = ?", userID).
+		Order("services.\"RatingRataRata\" DESC"). // Tambahkan prefix services. agar tidak ambigu
+		Limit(5).
+		Find(&services).Error
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recommendations"})
 		return
 	}
 
-	// We wrap it in the exact JSON format your Flutter app is expecting
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Recommendations fetched successfully",
 		"results": services,
@@ -34,16 +39,20 @@ func GetRecommendations(c *gin.Context) {
 func GetServicesByCategory(c *gin.Context) {
 	categoryName := c.Query("name")
 
-	// Default page 1, limit 10 data per request
+	// LOGIKA PAGINATION KAMU SAMA SEKALI TIDAK DIUBAH
 	pageStr := c.DefaultQuery("page", "1")
 	page, _ := strconv.Atoi(pageStr)
 	limit := 10
 	offset := (page - 1) * limit
 
 	var services []models.Service
+	userID := 1 // Dummy User ID
 
-	// Tambahkan .Limit() dan .Offset() di GORM
-	err := config.DB.Where("\"Kategori\" = ?", categoryName).
+	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
+	err := config.DB.Table("services").
+		Select("services.*, CASE WHEN saved_services.id IS NOT NULL THEN true ELSE false END as \"IsBookmarked\"").
+		Joins("LEFT JOIN saved_services ON services.\"JasaID\" = saved_services.jasa_id AND saved_services.user_id = ?", userID).
+		Where("services.\"Kategori\" = ?", categoryName). // Tambahkan prefix services.
 		Limit(limit).
 		Offset(offset).
 		Find(&services).Error

@@ -17,6 +17,8 @@ type Service struct {
 	IsOpen    bool      `gorm:"column:is_open" json:"IsOpen"`
 	ImageUrl  string    `gorm:"column:image_url" json:"ImageUrl"`
 	CreatedAt time.Time `gorm:"column:created_at" json:"CreatedAt"`
+
+	IsBookmarked bool `gorm:"column:IsBookmarked;->" json:"IsBookmarked"`
 }
 
 func (Service) TableName() string {
