@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../../services/api_service.dart';
+import 'package:provider/provider.dart';
+import '../../../../providers/bookmark_provider.dart';
 
-class ServiceCard extends StatelessWidget {
+class ServiceCard extends StatefulWidget {
+  final int jasaId; // DITAMBAHKAN: ID Jasa untuk dikirim ke Backend
   final String title;
   final String specialty;
   final String price;
@@ -8,9 +12,11 @@ class ServiceCard extends StatelessWidget {
   final bool isOpen;
   final String imageUrl;
   final VoidCallback onTap;
+  final bool initialIsSaved;
 
   const ServiceCard({
     super.key,
+    required this.jasaId, // DITAMBAHKAN
     required this.title,
     required this.specialty,
     required this.price,
@@ -18,12 +24,93 @@ class ServiceCard extends StatelessWidget {
     required this.isOpen,
     required this.imageUrl, 
     required this.onTap,
+    this.initialIsSaved = false,
   });
+
+  @override
+  State<ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<ServiceCard> {
+  // Dihilangkan kata 'late' dan langsung diberi nilai awal untuk mencegah error layar merah
+  bool _isSaved = false; 
+
+  // --- 1. INISIALISASI AWAL SAAT KARTU DIGAMBAR ---
+  @override
+  void initState() {
+    super.initState();
+    _isSaved = widget.initialIsSaved; 
+  }
+
+  // --- 2. UPDATE KARTU JIKA DATA DARI SERVER BERUBAH ---
+  @override
+  void didUpdateWidget(covariant ServiceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialIsSaved != oldWidget.initialIsSaved) {
+      setState(() {
+        _isSaved = widget.initialIsSaved;
+      });
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    // 1. Ubah UI sementara biar terasa cepat (Optimistic Update)
+    setState(() {
+      _isSaved = !_isSaved; 
+    });
+
+    try {
+      // CCTV 1: Cek apakah ID Jasa-nya benar-benar ada nilainya
+      print("===== DEBUG SAVE =====");
+      print("Mencoba save JasaID: ${widget.jasaId} untuk UserID: 1");
+
+      // 2. Panggil API dan TUNGGU (await)
+      await ApiService.toggleSaveService(userId: 1, jasaId: widget.jasaId);
+      
+      print("API Save Berhasil direspon Golang!");
+      print("======================");
+
+      // 3. Suruh Provider mengupdate daftar Saved di latar belakang
+      if (mounted) {
+        Provider.of<BookmarkProvider>(context, listen: false).loadSavedServices();
+      }
+
+      // 4. Tampilkan SnackBar kalau sukses
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_isSaved ? 'Disimpan ke Favorit!' : 'Dihapus dari Favorit'),
+            backgroundColor: Colors.green, // Hijau kalau sukses
+            duration: const Duration(seconds: 1),
+          ),
+        );
+      }
+    } catch (e) {
+      // CCTV 2: TANGKAP ERROR JIKA GAGAL
+      print("!!! ERROR API SAVE !!!");
+      print(e.toString());
+      print("======================");
+
+      // 4. KEMBALIKAN WARNA ICON SEPERTI SEMULA KARENA GAGAL
+      setState(() {
+        _isSaved = !_isSaved; 
+      });
+
+      // Tampilkan error merah
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 16, left: 24, right: 24),
         padding: const EdgeInsets.all(12),
@@ -39,18 +126,17 @@ class ServiceCard extends StatelessWidget {
           ],
         ),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start, // Ratakan konten ke atas
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. GAMBAR (Kotak di Kiri)
             Container(
-              width: 100, // Ukuran sedikit diperbesar agar proporsional
+              width: 100,
               height: 100,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.grey[200],
                 image: DecorationImage(
-                  // Ganti URL ini dengan gambar toko asli jika ada
-                  image: NetworkImage(imageUrl), 
+                  image: NetworkImage(widget.imageUrl), // Berubah jadi widget.imageUrl
                   fit: BoxFit.cover,
                 ),
               ),
@@ -68,10 +154,10 @@ class ServiceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Judul Toko (Bisa panjang)
+                      // Judul Toko
                       Expanded(
                         child: Text(
-                          title,
+                          widget.title, // Berubah jadi widget.title
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -81,13 +167,17 @@ class ServiceCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      // Icon Bookmark Biru
-                      const Padding(
-                        padding: EdgeInsets.only(left: 4.0),
-                        child: Icon(
-                          Icons.bookmark, 
-                          color: Color(0xFF4981FB), // Warna Biru Brand
-                          size: 24,
+                      
+                      // --- DITAMBAHKAN: ICON BOOKMARK YANG BISA DIKLIK ---
+                      GestureDetector(
+                        onTap: _toggleSave,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 4.0, bottom: 4.0),
+                          child: Icon(
+                            _isSaved ? Icons.bookmark : Icons.bookmark_border,
+                            color: _isSaved ? const Color(0xFF4981FB) : Colors.grey,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ],
@@ -97,7 +187,7 @@ class ServiceCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        rating,
+                        widget.rating, // Berubah jadi widget.rating
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -113,7 +203,7 @@ class ServiceCard extends StatelessWidget {
 
                   // --- BARIS 3: SPESIALISASI ---
                   Text(
-                    specialty,
+                    widget.specialty, // Berubah jadi widget.specialty
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[700],
@@ -126,7 +216,7 @@ class ServiceCard extends StatelessWidget {
 
                   // --- BARIS 4: HARGA ---
                   Text(
-                    "Price start from $price", // Format teks sesuai gambar
+                    "Price start from ${widget.price}", // Berubah jadi widget.price
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey[700],
@@ -137,13 +227,13 @@ class ServiceCard extends StatelessWidget {
 
                   const SizedBox(height: 6),
 
-                  // --- BARIS 5: STATUS JAM BUKA (HIJAU) ---
+                  // --- BARIS 5: STATUS JAM BUKA ---
                   Text(
-                    isOpen ? "Open (08:00 - 22:00)" : "Closed",
+                    widget.isOpen ? "Open (08:00 - 22:00)" : "Closed", // Berubah jadi widget.isOpen
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isOpen ? Colors.green : Colors.red,
+                      color: widget.isOpen ? Colors.green : Colors.red,
                     ),
                   ),
                 ],

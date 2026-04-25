@@ -165,6 +165,8 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                             child: ServiceCard(
+                              jasaId: item['JasaID'],
+                              initialIsSaved: item['IsBookmarked'] == true,
                               title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
                               specialty: item['Kategori'] ?? 'Umum',
                               price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',

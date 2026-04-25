@@ -34,6 +34,8 @@ import 'features/saved/view/saved_screen.dart';
 import 'features/profile/view/edit_business_profile_screen.dart';
 import 'features/profile/view/add_post_screen.dart';
 import 'features/profile/view/profile_screen.dart';
+import 'package:provider/provider.dart';
+import 'providers/bookmark_provider.dart';
 
 void main() {
   runApp(
@@ -42,6 +44,7 @@ void main() {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => NavigationController()),
         ChangeNotifierProvider(create: (_) => ThemeController()), // Crucial for the toggle
+        ChangeNotifierProvider(create: (_) => BookmarkProvider()),
       ],
       child: const MyApp(),
     ),

@@ -187,6 +187,8 @@ Future<void> _fetchRecommendations() async {
                     itemBuilder: (context, index) {
                       final item = _recommendations[index];
                       return ServiceCard(
+                        jasaId: item['JasaID'],
+                        initialIsSaved: item['IsBookmarked'] == true,
                         title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
                         specialty: item['Kategori'] ?? 'Umum',
                         price: item['HargaMulai'] != null 
