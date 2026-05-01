@@ -38,14 +38,43 @@ class AuthWelcomeScreen extends StatelessWidget {
         if (!context.mounted) return; 
 
         if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          final jwtToken = data['token'];
+          print("🔍 RAW RESPONSE: ${response.body}"); // CCTV kita
           
-          print("🎉 LOGIN GOOGLE SUKSES! Token: $jwtToken");
+          final responseBody = jsonDecode(response.body);
           
-          // --- STEP A: SIMPAN TOKEN KE MEMORI HP ---
+          String? jwtToken;
+          int? userId;
+
+          // --- DETEKTOR BENTUK JSON OTOMATIS ---
+          // SKENARIO 1: Kalau JSON dibungkus "data" (Seperti Postman tadi)
+          if (responseBody['data'] != null) {
+            jwtToken = responseBody['data']['token'];
+            // Cari ID, entah namanya 'user_id' atau ada di dalam 'user'
+            userId = responseBody['data']['user_id'] ?? (responseBody['data']['user'] != null ? responseBody['data']['user']['id'] : null);
+          } 
+          // SKENARIO 2: Kalau JSON tidak dibungkus (Langsung di luar)
+          else {
+            jwtToken = responseBody['token'];
+            // Cari ID langsung
+            userId = responseBody['user_id'] ?? (responseBody['user'] != null ? responseBody['user']['id'] : null);
+          }
+          // ------------------------------------
+
+          // Cegah crash kalau ternyata Golang emang gak ngirim token/ID
+          if (jwtToken == null || userId == null) {
+            print("❌ STRUKTUR JSON GOLANG TIDAK LENGKAP: ${response.body}");
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Terjadi kesalahan data dari server.'), backgroundColor: Colors.red),
+            );
+            return; 
+          }
+          
+          print("🎉 LOGIN GOOGLE SUKSES! Token: $jwtToken | UserID: $userId");
+          
+          // --- STEP A: SIMPAN TOKEN & ID KE MEMORI HP ---
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('jwt_token', jwtToken);
+          await prefs.setString('jwt_token', jwtToken.toString());
+          await prefs.setInt('currentUserId', userId);
 
           // --- STEP B: CEK APAKAH LAYAR MASIH ADA ---
           if (!context.mounted) return;

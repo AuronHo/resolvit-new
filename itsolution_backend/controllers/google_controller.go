@@ -60,5 +60,6 @@ func GoogleLogin(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Login Google Berhasil!",
 		"token":   tokenString,
+		"user_id": user.ID,
 	})
 }

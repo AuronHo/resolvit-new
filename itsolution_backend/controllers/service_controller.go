@@ -15,7 +15,11 @@ import (
 // GetRecommendations fetches top-rated services for the Home Screen
 func GetRecommendations(c *gin.Context) {
 	var services []models.Service
-	userID := 1 // Dummy User ID (Nanti diganti dinamis saat fitur Login selesai)
+
+	userID := c.Query("user_id")
+	if userID == "" {
+		userID = "0" // Jika tidak ada yang login, anggap ID 0 (tidak ada bookmark)
+	}
 
 	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
 	err := config.DB.Table("services").
@@ -46,7 +50,10 @@ func GetServicesByCategory(c *gin.Context) {
 	offset := (page - 1) * limit
 
 	var services []models.Service
-	userID := 1 // Dummy User ID
+	userID := c.Query("user_id")
+	if userID == "" {
+		userID = "0" // Jika tidak ada yang login, anggap ID 0 (tidak ada bookmark)
+	}
 
 	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
 	err := config.DB.Table("services").

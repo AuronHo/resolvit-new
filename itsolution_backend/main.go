@@ -30,6 +30,8 @@ func main() {
 	r.GET("/api/services/category", controllers.GetServicesByCategory)
 	r.POST("/api/services/save", controllers.ToggleSaveService)
 	r.GET("/api/services/saved", controllers.GetSavedServices)
+	r.GET("/api/users/:id", controllers.GetUserProfile)
+	r.POST("/api/auth/sync", controllers.SyncGoogleUser)
 
 	// AREA VIP (Dijaga oleh Middleware)
 	// Perhatikan: Kita selipkan "middlewares.RequireAuth" sebelum fungsi utama

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
 class ApiService {
@@ -55,9 +56,10 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getRecommendations() async {
     try {
-      // Ingat: Gunakan 10.0.2.2 jika pakai Emulator Android
+      final currentUserId = await getCurrentUserId();
+      final userIdParam = currentUserId != null ? currentUserId.toString() : '0';
       final response = await http.get(
-        Uri.parse('http://10.0.2.2:8080/api/services/recommendations'),
+        Uri.parse('http://10.0.2.2:8080/api/services/recommendations?user_id=$userIdParam'),
         headers: {'Content-Type': 'application/json'},
       );
 
@@ -73,9 +75,16 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getServicesByCategory(String categoryName, {int page = 1}) async {
     try {
+      // --- 1. AMBIL ID USER AKTIF ---
+      // (Fungsi ini sudah kita buat sebelumnya di file yang sama)
+      final currentUserId = await getCurrentUserId();
+      final userIdParam = currentUserId != null ? currentUserId.toString() : '0';
+      // ------------------------------
+
       final String encodedCategory = Uri.encodeComponent(categoryName);
-      // Tambahkan &page=$page ke URL
-      final Uri url = Uri.parse('http://10.0.2.2:8080/api/services/category?name=$encodedCategory&page=$page');
+      
+      // --- 2. TAMBAHKAN user_id KE URL ---
+      final Uri url = Uri.parse('http://10.0.2.2:8080/api/services/category?name=$encodedCategory&page=$page&user_id=$userIdParam');
       
       final response = await http.get(url, headers: {'Content-Type': 'application/json'});
 
@@ -130,5 +139,56 @@ class ApiService {
     } catch (e) {
       throw Exception('Error koneksi: $e');
     }
+  }
+
+  static Future<Map<String, dynamic>> getUserProfile({required int userId}) async {
+    try {
+      // Ingat: Saat ini kita masih pakai userId=1. Nanti diganti dengan token JWT.
+      final response = await http.get(
+        Uri.parse('http://10.0.2.2:8080/api/users/$userId'), 
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('Gagal mengambil data profil');
+      }
+    } catch (e) {
+      throw Exception('Error koneksi: $e');
+    }
+  }
+
+  static Future<void> syncGoogleLogin({
+    required String name,
+    required String email,
+    required String avatarUrl,
+  }) async {
+    final response = await http.post(
+      Uri.parse('http://10.0.2.2:8080/api/auth/sync'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'email': email,
+        'avatar_url': avatarUrl,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final realUserId = data['user']['id']; // Ini ID asli dari database!
+
+      // Simpan ID ini ke memori HP secara permanen
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('currentUserId', realUserId);
+    } else {
+      throw Exception('Gagal sinkronisasi login');
+    }
+  }
+
+  // Fungsi untuk mengambil ID yang sedang aktif
+  static Future<int?> getCurrentUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('currentUserId');
   }
 }
