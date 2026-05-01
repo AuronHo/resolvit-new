@@ -34,7 +34,6 @@ import 'features/saved/view/saved_screen.dart';
 import 'features/profile/view/edit_business_profile_screen.dart';
 import 'features/profile/view/add_post_screen.dart';
 import 'features/profile/view/profile_screen.dart';
-import 'package:provider/provider.dart';
 import 'providers/bookmark_provider.dart';
 
 void main() {

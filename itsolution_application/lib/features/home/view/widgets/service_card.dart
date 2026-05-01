@@ -60,12 +60,26 @@ class _ServiceCardState extends State<ServiceCard> {
     });
 
     try {
-      // CCTV 1: Cek apakah ID Jasa-nya benar-benar ada nilainya
-      print("===== DEBUG SAVE =====");
-      print("Mencoba save JasaID: ${widget.jasaId} untuk UserID: 1");
+      final currentUserId = await ApiService.getCurrentUserId();
 
-      // 2. Panggil API dan TUNGGU (await)
-      await ApiService.toggleSaveService(userId: 1, jasaId: widget.jasaId);
+      print("===== DEBUG SAVE =====");
+      print("Mencoba save JasaID: ${widget.jasaId} untuk UserID: $currentUserId"); // Print dinamis!
+
+      // Jika ID kosong (belum login/belum tersimpan)
+      if (currentUserId == null) {
+        print("GAGAL: User ID null. Mengembalikan warna icon.");
+        setState(() => _isSaved = !_isSaved); // Kembalikan warna
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Silakan login terlebih dahulu'), backgroundColor: Colors.red),
+          );
+        }
+        return; // Hentikan proses di sini
+      }
+
+      await ApiService.toggleSaveService(userId: currentUserId, jasaId: widget.jasaId);
       
       print("API Save Berhasil direspon Golang!");
       print("======================");

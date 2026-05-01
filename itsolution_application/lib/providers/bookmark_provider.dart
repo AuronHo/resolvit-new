@@ -11,12 +11,24 @@ class BookmarkProvider extends ChangeNotifier {
   // Fungsi untuk menarik data Saved dari database
   Future<void> loadSavedServices() async {
     try {
-      final response = await ApiService.getSavedServices(userId: 1);
-      _savedList = response['results'] ?? [];
+      // 1. Ambil ID asli dari SharedPreferences
+      final currentUserId = await ApiService.getCurrentUserId();
+      
+      if (currentUserId == null) {
+        print("User belum login, kosongkan saved list");
+        _savedList = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // 2. Gunakan ID asli untuk menarik data
+      final response = await ApiService.getSavedServices(userId: currentUserId);
+      _savedList = response['data'] ?? response['results'] ?? [];
     } catch (e) {
       print("Provider Error: $e");
     }
     _isLoading = false;
-    notifyListeners(); // Beritahu semua layar untuk update tampilan
+    notifyListeners();
   }
 }

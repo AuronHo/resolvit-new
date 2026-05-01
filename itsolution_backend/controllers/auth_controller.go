@@ -230,3 +230,36 @@ func VerifyOTP(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "OTP Verified"})
 }
+
+func SyncGoogleUser(c *gin.Context) {
+	var input struct {
+		Name      string `json:"name"`
+		Email     string `json:"email"`
+		AvatarUrl string `json:"avatar_url"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var user models.User
+	// Cari user berdasarkan email. Jika tidak ketemu, buat user baru (FirstOrCreate)
+	result := config.DB.Where("email = ?", input.Email).FirstOrCreate(&user, models.User{
+		Name:      input.Name,
+		Email:     input.Email,
+		AvatarUrl: input.AvatarUrl,
+		Role:      "customer", // Default role
+	})
+
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal sinkronisasi data user"})
+		return
+	}
+
+	// Kembalikan data user lengkap dengan ID aslinya dari database
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login berhasil",
+		"user":    user,
+	})
+}

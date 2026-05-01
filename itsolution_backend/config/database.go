@@ -28,8 +28,11 @@ func ConnectDatabase() {
 		panic("ERROR: DB_URL kosong! Cek file .env kamu.")
 	}
 
-	database, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-		PrepareStmt: false, // Menghindari error "prepared statement does not exist"
+	database, err := gorm.Open(postgres.New(postgres.Config{
+		DSN:                  dsn,
+		PreferSimpleProtocol: true, // MATIKAN PREPARED STATEMENT DI TINGKAT PROTOKOL
+	}), &gorm.Config{
+		PrepareStmt: false,
 	})
 
 	if err != nil {
