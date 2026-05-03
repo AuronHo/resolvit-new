@@ -25,28 +25,56 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   Future<void> _handleRegistration() async {
     final authController = context.read<AuthController>();
-    
-    if (_formKey.currentState!.validate() && authController.agreedToTerms) {
-      setState(() => _isLoading = true);
 
-      authController.nameController.text = _nameController.text;
-      authController.emailController.text = _emailPhoneController.text;
-      authController.passwordController.text = _passwordController.text;
-      
-      final bool success = await authController.registerUser();
-
-      if (!mounted) return;
-
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful!'), backgroundColor: Colors.green),
-        );
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
-      }
-      setState(() => _isLoading = false);
-    } else if (!authController.agreedToTerms) {
+    if (!_formKey.currentState!.validate()) return;
+    if (!authController.agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You must accept Terms & Conditions'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    authController.nameController.text = _nameController.text;
+    authController.emailController.text = _emailPhoneController.text;
+    authController.passwordController.text = _passwordController.text;
+
+    final String? error = await authController.registerUser();
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      return;
+    }
+
+    if (error == 'email_already_registered') {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Email already registered'),
+          content: const Text('This email is already linked to an account. Would you like to sign in instead?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pushReplacementNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4981FB)),
+              child: const Text('Sign In', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: Colors.red),
       );
     }
   }

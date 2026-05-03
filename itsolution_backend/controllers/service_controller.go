@@ -40,6 +40,63 @@ func GetRecommendations(c *gin.Context) {
 	})
 }
 
+func GetMyService(c *gin.Context) {
+	userIDStr := c.Query("user_id")
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil || userID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
+		return
+	}
+	var service models.Service
+	if err := config.DB.Where(`"ProviderID" = ?`, userID).Order(`"JasaID" DESC`).First(&service).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No service found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"service": service})
+}
+
+func UpdateService(c *gin.Context) {
+	id := c.Param("id")
+	var input struct {
+		NamaJasa         string `json:"NamaJasa"`
+		Kategori         string `json:"Kategori"`
+		DeskripsiJasa    string `json:"DeskripsiJasa"`
+		HargaMulai       int64  `json:"HargaMulai"`
+		Location         string `json:"location"`
+		OperationalHours string `json:"operational_hours"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
+		return
+	}
+	updates := map[string]interface{}{}
+	if input.NamaJasa != "" {
+		updates["NamaJasa"] = input.NamaJasa
+	}
+	if input.Kategori != "" {
+		updates["Kategori"] = input.Kategori
+	}
+	if input.DeskripsiJasa != "" {
+		updates["DeskripsiJasa"] = input.DeskripsiJasa
+	}
+	if input.HargaMulai > 0 {
+		updates["HargaMulai"] = input.HargaMulai
+	}
+	if input.Location != "" {
+		updates["location"] = input.Location
+	}
+	if input.OperationalHours != "" {
+		updates["operational_hours"] = input.OperationalHours
+	}
+	if err := config.DB.Model(&models.Service{}).Where(`"JasaID" = ?`, id).Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update service"})
+		return
+	}
+	var service models.Service
+	config.DB.Where(`"JasaID" = ?`, id).First(&service)
+	c.JSON(http.StatusOK, gin.H{"message": "Service updated", "service": service})
+}
+
 func CreateService(c *gin.Context) {
 	var input struct {
 		ProviderID    int    `json:"provider_id"`
@@ -50,6 +107,21 @@ func CreateService(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&input); err != nil || input.ProviderID == 0 || input.NamaJasa == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id and NamaJasa are required"})
+		return
+	}
+
+	// Upsert: update if provider already has a service, create otherwise
+	var existing models.Service
+	if config.DB.Where(`"ProviderID" = ?`, input.ProviderID).Order(`"JasaID" DESC`).First(&existing).Error == nil {
+		updates := map[string]interface{}{
+			"NamaJasa":      input.NamaJasa,
+			"Kategori":      input.Kategori,
+			"DeskripsiJasa": input.DeskripsiJasa,
+			"HargaMulai":    input.HargaMulai,
+			"is_open":       true,
+		}
+		config.DB.Model(&existing).Updates(updates)
+		c.JSON(http.StatusOK, gin.H{"message": "Service updated", "service": existing})
 		return
 	}
 

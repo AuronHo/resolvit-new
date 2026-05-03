@@ -52,7 +52,8 @@ class AuthController extends ChangeNotifier {
   // 7. This is your main registration logic.
   // We'll make it return a boolean for success/failure
   // so the UI can show the right SnackBar.
-  Future<bool> registerUser() async {
+  // Returns null on success, error string on failure.
+  Future<String?> registerUser() async {
     try {
       final response = await http.post(
         Uri.parse(apiUrl),
@@ -65,16 +66,22 @@ class AuthController extends ChangeNotifier {
         }),
       );
 
+      final body = jsonDecode(response.body);
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return true;
-      } else {
-        // Bisa tambahkan log untuk debug
-        print("Gagal Register: ${response.body}");
-        return false;
+        final token = body['token'] as String?;
+        final userId = body['user_id'];
+        if (token != null && userId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jwt_token', token);
+          await prefs.setInt('currentUserId', (userId as num).toInt());
+        }
+        return null; // success
       }
+
+      return body['error'] as String? ?? 'Registration failed';
     } catch (e) {
-      print("Error koneksi ke Backend: $e");
-      return false;
+      return 'Connection error: $e';
     }
   }
 
@@ -110,8 +117,17 @@ class AuthController extends ChangeNotifier {
         if (token != null && userId != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
-          await prefs.setInt('currentUserId', userId); // SIMPAN ID BIAR PROFILE GAK LOADING
-          
+          await prefs.setInt('currentUserId', userId);
+
+          // Restore business account link if server sent it
+          final linkedId = responseBody['linked_provider_id'] ??
+              (responseBody['data'] != null
+                  ? responseBody['data']['linked_provider_id']
+                  : null);
+          if (linkedId != null && linkedId != 0) {
+            await prefs.setInt('business_user_id', linkedId as int);
+          }
+
           print("🎉 LOGIN MANUAL SUKSES! ID: $userId");
           return true;
         } else {

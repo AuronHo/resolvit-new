@@ -20,6 +20,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _phone = '';
   String _avatarUrl = '';
   String _role = 'customer';
+  bool _hasBusinessAccount = false;
 
   @override
   void initState() {
@@ -46,7 +47,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       // 2. Gunakan ID asli tersebut untuk memanggil Golang
       final data = await ApiService.getUserProfile(userId: currentUserId);
-      final user = data['user']; 
+      final user = data['user'];
+      final businessId = await ApiService.getBusinessUserId();
 
       if (mounted) {
         setState(() {
@@ -55,6 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _phone = user['phone'] ?? '-';
           _avatarUrl = user['avatar_url'] ?? 'https://i.pravatar.cc/300';
           _role = user['role'] ?? 'customer';
+          _hasBusinessAccount = _role == 'provider' || businessId != null;
           _isLoading = false;
         });
       }
@@ -79,6 +82,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('currentUserId');
       await prefs.remove('jwt_token');
+      await prefs.remove('business_user_id');
 
       // 3. Logout dari Google (Jika user pakai Google Sign-In)
       try {
@@ -231,14 +235,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
 
-                  _buildActionRow(
-                    title: 'Service Provider Register',
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                    onTap: () {
-                      Navigator.pushNamed(context, '/service_provider_register')
-                          .then((_) => _fetchProfileData());
-                    },
-                  ),
+                  if (!_hasBusinessAccount)
+                    _buildActionRow(
+                      title: 'Service Provider Register',
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      onTap: () {
+                        Navigator.pushNamed(context, '/service_provider_register')
+                            .then((_) => _fetchProfileData());
+                      },
+                    ),
 
                   if (_role == 'provider')
                     _buildActionRow(

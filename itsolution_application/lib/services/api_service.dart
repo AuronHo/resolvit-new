@@ -21,6 +21,20 @@ class ApiService {
     return prefs.getString('jwt_token');
   }
 
+  /// Returns the business/provider user ID linked to this account.
+  /// Same as currentUserId if user upgraded their own account.
+  static Future<int?> getBusinessUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt('business_user_id');
+  }
+
+  static Future<void> saveBusinessUserId(int? id) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (id != null && id != 0) {
+      await prefs.setInt('business_user_id', id);
+    }
+  }
+
   // ===========================================================================
   // SEARCH (Go backend — replaces Python/ngrok)
   // ===========================================================================
@@ -200,6 +214,7 @@ class ApiService {
     required String businessEmail,
     required String password,
   }) async {
+    final registrantId = await getCurrentUserId();
     final response = await http.post(
       Uri.parse('$_base/api/register/provider'),
       headers: {'Content-Type': 'application/json'},
@@ -207,11 +222,49 @@ class ApiService {
         'business_name': businessName,
         'business_email': businessEmail,
         'password': password,
+        'registrant_id': registrantId ?? 0,
       }),
     );
     final data = jsonDecode(response.body);
-    if (response.statusCode == 200 || response.statusCode == 201) return data;
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Persist link so account switcher survives logout/re-login
+      await saveBusinessUserId(data['user_id'] as int?);
+      return data;
+    }
     throw Exception(data['error'] ?? 'Registration failed');
+  }
+
+  static Future<Map<String, dynamic>> getMyService(int userId) async {
+    final response =
+        await http.get(Uri.parse('$_base/api/services/my?user_id=$userId'));
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('No service found');
+  }
+
+  static Future<Map<String, dynamic>> updateService({
+    required int jasaId,
+    String? namaJasa,
+    String? kategori,
+    String? deskripsi,
+    int? hargaMulai,
+    String? location,
+    String? operationalHours,
+  }) async {
+    final body = <String, dynamic>{};
+    if (namaJasa != null && namaJasa.isNotEmpty) body['NamaJasa'] = namaJasa;
+    if (kategori != null && kategori.isNotEmpty) body['Kategori'] = kategori;
+    if (deskripsi != null && deskripsi.isNotEmpty) body['DeskripsiJasa'] = deskripsi;
+    if (hargaMulai != null && hargaMulai > 0) body['HargaMulai'] = hargaMulai;
+    if (location != null) body['location'] = location;
+    if (operationalHours != null) body['operational_hours'] = operationalHours;
+    final response = await http.put(
+      Uri.parse('$_base/api/services/$jasaId'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) return data;
+    throw Exception(data['error'] ?? 'Failed to update service');
   }
 
   static Future<Map<String, dynamic>> createService({
@@ -235,6 +288,39 @@ class ApiService {
     final data = jsonDecode(response.body);
     if (response.statusCode == 200 || response.statusCode == 201) return data;
     throw Exception(data['error'] ?? 'Failed to create service');
+  }
+
+  // ===========================================================================
+  // PORTFOLIO POSTS
+  // ===========================================================================
+
+  static Future<Map<String, dynamic>> createPost({
+    required int providerId,
+    required String caption,
+    String imageUrl = '',
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_base/api/posts'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'provider_id': providerId,
+        'caption': caption,
+        'image_url': imageUrl,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200 || response.statusCode == 201) return data;
+    throw Exception(data['error'] ?? 'Failed to create post');
+  }
+
+  static Future<List<dynamic>> getPosts(int providerId) async {
+    final response = await http
+        .get(Uri.parse('$_base/api/posts?provider_id=$providerId'));
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['posts'] ?? [];
+    }
+    throw Exception('Failed to load posts');
   }
 
   // ===========================================================================
