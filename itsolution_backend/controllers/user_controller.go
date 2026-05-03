@@ -60,6 +60,7 @@ func UpgradeToProvider(c *gin.Context) {
 		BusinessName  string `json:"business_name"`
 		BusinessEmail string `json:"business_email"`
 		Password      string `json:"password"`
+		RegistrantID  int    `json:"registrant_id"` // logged-in customer's user ID
 	}
 	if err := c.ShouldBindJSON(&input); err != nil || input.BusinessName == "" || input.BusinessEmail == "" || input.Password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "business_name, business_email, and password are required"})
@@ -68,10 +69,17 @@ func UpgradeToProvider(c *gin.Context) {
 
 	var existing models.User
 	if config.DB.Where("email = ?", input.BusinessEmail).First(&existing).Error == nil {
+		// Email already exists — upgrade that account to provider
 		config.DB.Model(&existing).Updates(map[string]interface{}{
 			"role": "provider",
 			"name": input.BusinessName,
 		})
+		providerID := int(existing.ID)
+		// If registrant is different account, link them
+		if input.RegistrantID != 0 && input.RegistrantID != int(existing.ID) {
+			config.DB.Model(&models.User{}).Where("id = ?", input.RegistrantID).
+				Update("linked_provider_id", providerID)
+		}
 		c.JSON(http.StatusOK, gin.H{"message": "Account upgraded to provider", "user_id": existing.ID})
 		return
 	}
@@ -91,6 +99,13 @@ func UpgradeToProvider(c *gin.Context) {
 	if err := config.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah terdaftar"})
 		return
+	}
+
+	// Link new provider account back to registrant's personal account
+	if input.RegistrantID != 0 {
+		providerID := int(user.ID)
+		config.DB.Model(&models.User{}).Where("id = ?", input.RegistrantID).
+			Update("linked_provider_id", providerID)
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Provider account created", "user_id": user.ID})

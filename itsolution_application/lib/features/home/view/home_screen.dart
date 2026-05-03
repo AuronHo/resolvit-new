@@ -195,8 +195,10 @@ Future<void> _fetchRecommendations() async {
                             ? 'Rp ${item['HargaMulai']}' 
                             : 'Hubungi Kami',
                         rating: item['RatingRataRata']?.toString() ?? '0.0',
-                        isOpen: true,
-                        imageUrl: 'https://loremflickr.com/320/240/technician?lock=$index',
+                        isOpen: item['IsOpen'] == true,
+                        imageUrl: (item['ImageUrl'] as String? ?? '').isNotEmpty
+                            ? item['ImageUrl'] as String
+                            : 'https://placehold.co/320x240/4981FB/FFFFFF/png?text=IT+Service',
                         onTap: () {
                            Navigator.pushNamed(context, '/service_detail', arguments: item);
                         },
@@ -236,7 +238,7 @@ Future<void> _fetchRecommendations() async {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5, offset: const Offset(0, 2)),
               ],
             ),
             child: Icon(icon, color: Colors.black, size: 28),

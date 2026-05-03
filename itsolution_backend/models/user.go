@@ -11,6 +11,7 @@ type User struct {
 	Phone     string `json:"phone"`
 	AvatarUrl string `json:"avatar_url"`
 
+	LinkedProviderID   *int       `gorm:"column:linked_provider_id" json:"linked_provider_id"`
 	ResetPasswordToken string     `json:"reset_password_token"`
 	TokenExpiry        *time.Time `json:"token_expiry"`
 	CreatedAt          time.Time  `json:"created_at"`

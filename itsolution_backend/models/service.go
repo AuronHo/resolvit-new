@@ -14,9 +14,11 @@ type Service struct {
 	JumlahProyekSelesai int     `gorm:"column:JumlahProyekSelesai" json:"JumlahProyekSelesai"`
 
 	// Tiga kolom ini tetap snake_case karena digenerate otomatis oleh database/kita
-	IsOpen    bool      `gorm:"column:is_open" json:"IsOpen"`
-	ImageUrl  string    `gorm:"column:image_url" json:"ImageUrl"`
-	CreatedAt time.Time `gorm:"column:created_at" json:"CreatedAt"`
+	IsOpen           bool      `gorm:"column:is_open" json:"IsOpen"`
+	ImageUrl         string    `gorm:"column:image_url" json:"ImageUrl"`
+	Location         string    `gorm:"column:location" json:"location"`
+	OperationalHours string    `gorm:"column:operational_hours" json:"operational_hours"`
+	CreatedAt        time.Time `gorm:"column:created_at" json:"CreatedAt"`
 
 	IsBookmarked bool `gorm:"column:IsBookmarked;->" json:"IsBookmarked"`
 }

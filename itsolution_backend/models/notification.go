@@ -9,5 +9,7 @@ type Notification struct {
 	Description string    `json:"description"`
 	IsRead      bool      `json:"is_read" gorm:"default:false"`
 	AvatarUrl   string    `json:"avatar_url"`
+	Type        string    `json:"type" gorm:"default:''"`
+	RefID       int       `json:"ref_id" gorm:"default:0"`
 	CreatedAt   time.Time `json:"created_at"`
 }

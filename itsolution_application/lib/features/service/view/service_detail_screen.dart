@@ -21,7 +21,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
 
   Map<String, dynamic> _service = {};
   List<dynamic> _reviews = [];
+  List<dynamic> _posts = [];
   bool _reviewsLoading = true;
+  bool _postsLoading = true;
 
   @override
   void initState() {
@@ -43,6 +45,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
       if (args is Map<String, dynamic>) {
         _service = args;
         _loadReviews();
+        _loadPosts();
       }
     }
   }
@@ -51,6 +54,20 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadPosts() async {
+    final providerId = (_service['ProviderID'] as num?)?.toInt();
+    if (providerId == null) {
+      setState(() => _postsLoading = false);
+      return;
+    }
+    try {
+      final data = await ApiService.getPosts(providerId);
+      if (mounted) setState(() { _posts = data; _postsLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _postsLoading = false);
+    }
   }
 
   Future<void> _loadReviews() async {
@@ -263,7 +280,8 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
                               onPressed: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                    builder: (_) => const ViewDetailsScreen()),
+                                    builder: (_) => const ViewDetailsScreen(),
+                                    settings: RouteSettings(arguments: _service)),
                               ),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: const Color(0xFF4981FB),
@@ -453,13 +471,33 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
   }
 
   Widget _buildPortfolioContent() {
+    if (_postsLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(32),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_posts.isEmpty) {
+      return Container(
+        color: Colors.white,
+        padding: const EdgeInsets.all(32),
+        child: const Center(
+          child: Text('No portfolio posts yet.',
+              style: TextStyle(color: Colors.grey)),
+        ),
+      );
+    }
+    final serviceName = _service['NamaJasa']?.toString() ?? 'Service';
+    final imageUrl = _service['ImageUrl']?.toString() ?? '';
     return ListView.builder(
       padding: EdgeInsets.zero,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 2,
+      itemCount: _posts.length,
       itemBuilder: (context, index) {
-        final serviceName = _service['NamaJasa'] ?? 'Service';
+        final post = _posts[index] as Map<String, dynamic>;
+        final postImage = post['image_url']?.toString() ?? '';
+        final caption = post['caption']?.toString() ?? '';
         return Container(
           color: Colors.white,
           margin: const EdgeInsets.only(bottom: 8),
@@ -471,47 +509,35 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: Colors.grey,
-                    backgroundImage:
-                        _service['ImageUrl']?.isNotEmpty == true
-                            ? NetworkImage(_service['ImageUrl'])
-                            : null,
+                    backgroundColor: Colors.grey[300],
+                    backgroundImage: imageUrl.isNotEmpty
+                        ? NetworkImage(imageUrl)
+                        : null,
+                    child: imageUrl.isEmpty
+                        ? const Icon(Icons.business, size: 20)
+                        : null,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(serviceName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold)),
-                        Text(index == 0 ? '1d' : '2d',
-                            style: const TextStyle(
-                                color: Colors.grey, fontSize: 12)),
-                      ],
-                    ),
+                    child: Text(serviceName,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
-                  const Icon(Icons.more_vert, color: Colors.grey),
                 ],
               ),
-              const SizedBox(height: 10),
-              Text(index == 0
-                  ? 'Professional work'
-                  : 'Hubungi kami untuk konsultasi'),
-              const SizedBox(height: 10),
-              Container(
-                height: 200,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
+              if (caption.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text(caption, style: const TextStyle(fontSize: 14)),
+              ],
+              if (postImage.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  image: DecorationImage(
-                    image: NetworkImage(
-                        'https://loremflickr.com/400/200/technician,repair?lock=$index'),
-                    fit: BoxFit.cover,
-                  ),
+                  child: Image.network(postImage,
+                      width: double.infinity,
+                      height: 200,
+                      fit: BoxFit.cover),
                 ),
-              ),
+              ],
             ],
           ),
         );

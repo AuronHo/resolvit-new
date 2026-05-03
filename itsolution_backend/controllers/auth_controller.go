@@ -42,13 +42,25 @@ func Register(c *gin.Context) {
 
 	result := config.DB.Create(&user)
 	if result.Error != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email sudah terdaftar!"})
+		c.JSON(http.StatusConflict, gin.H{"error": "email_already_registered"})
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"role":    user.Role,
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+	})
+	tokenString, err := token.SignedString(config.GetJWTSecret())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal membuat token"})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Registrasi berhasil!",
 		"user_id": user.ID,
+		"token":   tokenString,
 	})
 }
 
@@ -87,9 +99,10 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Login berhasil!",
-		"token":   tokenString,
-		"user_id": user.ID,
+		"message":            "Login berhasil!",
+		"token":              tokenString,
+		"user_id":            user.ID,
+		"linked_provider_id": user.LinkedProviderID,
 	})
 }
 

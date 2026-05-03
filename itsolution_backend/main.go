@@ -33,11 +33,15 @@ func main() {
 	// Migrate all models
 	config.DB.AutoMigrate(
 		&models.User{},
+		&models.Service{},
 		&models.Review{},
 		&models.ChatRoom{},
 		&models.ChatMessage{},
 		&models.Notification{},
+		&models.PortfolioPost{},
 	)
+
+	controllers.StartNotificationJob()
 
 	r := gin.Default()
 	r.Use(corsMiddleware())
@@ -67,7 +71,9 @@ func main() {
 	// Services
 	r.GET("/api/services/recommendations", controllers.GetRecommendations)
 	r.GET("/api/services/category", controllers.GetServicesByCategory)
+	r.GET("/api/services/my", controllers.GetMyService)
 	r.POST("/api/services", controllers.CreateService)
+	r.PUT("/api/services/:id", controllers.UpdateService)
 	r.POST("/api/services/save", controllers.ToggleSaveService)
 	r.GET("/api/services/saved", controllers.GetSavedServices)
 
@@ -77,6 +83,10 @@ func main() {
 	// Reviews
 	r.GET("/api/services/:id/reviews", controllers.GetReviews)
 	r.POST("/api/services/:id/reviews", controllers.PostReview)
+
+	// Portfolio posts
+	r.POST("/api/posts", controllers.CreatePost)
+	r.GET("/api/posts", controllers.GetPosts)
 
 	// Chat (REST)
 	r.POST("/api/chats", controllers.GetOrCreateChatRoom)

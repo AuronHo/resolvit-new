@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // 1. Wajib import Provider
-
-// 2. IMPORT CONTROLLER (Naik 2 level: keluar widgets, keluar view, masuk logic)
+import 'package:provider/provider.dart';
 import '../../logic/navigation_controller.dart';
+import '../../../../services/api_service.dart';
 
 class CustomBottomNavBar extends StatelessWidget {
   final int selectedIndex;
@@ -17,15 +16,14 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      // Margin dan desain floating (TETAP SAMA)
       margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-      height: 70, // Beri tinggi pasti agar rapi
+      height: 70,
       decoration: BoxDecoration(
         color: const Color(0xFF4981FB),
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -34,34 +32,18 @@ class CustomBottomNavBar extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Bagi ruang rata
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
-            // --- 1. HOME ---
             _buildNavItem(icon: Icons.home_filled, label: 'Home', index: 0),
-
-            // --- 2. CHAT ---
             _buildNavItem(
-              icon: Icons.chat_bubble_outline,
-              label: 'Chat',
-              index: 1,
-            ),
-
-            // --- 3. SAVED ---
+                icon: Icons.chat_bubble_outline, label: 'Chat', index: 1),
             _buildNavItem(
-              icon: Icons.bookmark_border,
-              label: 'Saved',
-              index: 2,
-            ),
-
-            // --- 4. PROFILE (SPESIAL) ---
+                icon: Icons.bookmark_border, label: 'Saved', index: 2),
             _buildNavItem(
               icon: Icons.person_outline,
               label: 'Profile',
               index: 3,
-              // INI RAHASIANYA: Tambahkan logika Long Press
-              onLongPress: () {
-                _showAccountSwitcher(context);
-              },
+              onLongPress: () => _showAccountSwitcher(context),
             ),
           ],
         ),
@@ -69,29 +51,21 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
-  // --- WIDGET ITEM NAVIGASI MANUAL ---
-  // Kita buat manual agar bisa pasang 'onLongPress'
   Widget _buildNavItem({
     required IconData icon,
     required String label,
     required int index,
-    VoidCallback? onLongPress, // Parameter opsional untuk Long Press
+    VoidCallback? onLongPress,
   }) {
     final bool isSelected = selectedIndex == index;
-    final Color color = isSelected
-        ? Colors.white
-        : Colors.white.withOpacity(0.6);
+    final Color color =
+        isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6);
 
     return GestureDetector(
-      // 1. KLIK BIASA: Pindah Halaman
       onTap: () => onTap(index),
-
-      // 2. TAHAN LAMA (Long Press): Khusus Profile
       onLongPress: onLongPress,
-
-      // Tampilan Icon & Teks
       child: Container(
-        color: Colors.transparent, // Agar area sentuh luas
+        color: Colors.transparent,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -104,7 +78,8 @@ class CustomBottomNavBar extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontSize: 10,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ],
@@ -113,12 +88,31 @@ class CustomBottomNavBar extends StatelessWidget {
     );
   }
 
-  // --- POP-UP SWITCHER (Sama seperti sebelumnya) ---
-  void _showAccountSwitcher(BuildContext context) {
+  void _showAccountSwitcher(BuildContext context) async {
+    final userId = await ApiService.getCurrentUserId();
+    if (userId == null) return;
+
+    Map<String, dynamic> user = {};
+    try {
+      final data = await ApiService.getUserProfile(userId: userId);
+      user = data['user'] ?? {};
+    } catch (_) {}
+
+    // Business tile shows if: role==provider (same account upgraded)
+    // OR a linked business account was stored after registration
+    final String role = user['role']?.toString() ?? 'customer';
+    final int? businessUserId = await ApiService.getBusinessUserId();
+    final bool isProvider = role == 'provider' || businessUserId != null;
+
+    if (!context.mounted) return;
+
+    final String name = user['name']?.toString() ?? 'User';
+    final String avatarUrl = user['avatar_url']?.toString() ?? '';
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (ctx) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 20),
           decoration: const BoxDecoration(
@@ -140,46 +134,92 @@ class CustomBottomNavBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
+
+              // --- Personal Account Tile ---
               ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: const CircleAvatar(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 24),
+                leading: CircleAvatar(
                   radius: 25,
-                  backgroundImage: NetworkImage(
-                    'https://i.pravatar.cc/150?u=sule',
-                  ),
+                  backgroundColor: Colors.grey[300],
+                  backgroundImage: avatarUrl.isNotEmpty
+                      ? NetworkImage(avatarUrl)
+                      : null,
+                  child: avatarUrl.isEmpty
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
                 ),
-                title: const Text(
-                  'Sule',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
+                title: Text(name,
+                    style:
+                        const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: const Text('Personal Account'),
+                trailing: context
+                        .read<NavigationController>()
+                        .isBusinessProfile
+                    ? null
+                    : const Icon(Icons.check_circle,
+                        color: Color(0xFF4981FB)),
                 onTap: () {
-                  Navigator.pop(context); // Tutup pop up
-                  // Set ke Personal Profile
-                  context.read<NavigationController>().setBusinessProfile(
-                    false,
-                  );
+                  Navigator.pop(ctx);
+                  context
+                      .read<NavigationController>()
+                      .setBusinessProfile(false);
                 },
               ),
-              const Divider(indent: 24, endIndent: 24),
-              ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-                leading: const CircleAvatar(
-                  radius: 25,
-                  backgroundImage: NetworkImage(
-                    'https://via.placeholder.com/150',
+
+              if (isProvider) ...[
+                const Divider(indent: 24, endIndent: 24),
+
+                // --- Business Account Tile ---
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24),
+                  leading: CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Colors.blue[100],
+                    child: const Icon(Icons.business,
+                        color: Color(0xFF4981FB)),
                   ),
+                  title: Text(name,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Business Account'),
+                  trailing: context
+                          .read<NavigationController>()
+                          .isBusinessProfile
+                      ? const Icon(Icons.check_circle,
+                          color: Color(0xFF4981FB))
+                      : null,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    context
+                        .read<NavigationController>()
+                        .setBusinessProfile(true);
+                  },
                 ),
-                title: const Text(
-                  'Buana Phone Service',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+              ] else ...[
+                const Divider(indent: 24, endIndent: 24),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 24),
+                  leading: const CircleAvatar(
+                    radius: 25,
+                    backgroundColor: Color(0xFFE8F0FE),
+                    child: Icon(Icons.add_business,
+                        color: Color(0xFF4981FB)),
+                  ),
+                  title: const Text('Become a Service Provider',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle:
+                      const Text('Register your business account'),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Navigator.pushNamed(
+                        context, '/service_provider_register');
+                  },
                 ),
-                subtitle: const Text('Business Account'),
-                onTap: () {
-                  Navigator.pop(context);
-                  context.read<NavigationController>().setBusinessProfile(true);
-                },
-              ),
+              ],
+
               const SizedBox(height: 20),
             ],
           ),
