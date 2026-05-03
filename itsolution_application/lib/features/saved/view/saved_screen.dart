@@ -93,7 +93,7 @@ class _SavedScreenState extends State<SavedScreen> {
                         rating: item['RatingRataRata']?.toString() ?? '0.0',
                         isOpen: item['IsOpen'] ?? true,
                         imageUrl: hasImage ? item['ImageUrl'] : 'https://picsum.photos/seed/$randomId/320/240',
-                        onTap: () => Navigator.pushNamed(context, '/service_detail'),
+                        onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
                       ),
                     );
                   },

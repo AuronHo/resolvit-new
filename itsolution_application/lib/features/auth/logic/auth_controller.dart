@@ -91,14 +91,33 @@ class AuthController extends ChangeNotifier {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        String token = data['token'];
+        final responseBody = jsonDecode(response.body);
+        
+        // --- 1. AMBIL TOKEN & ID DENGAN DETEKTOR OTOMATIS ---
+        String? token;
+        int? userId;
 
-        // SIMPAN TOKEN KE MEMORI HP
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('jwt_token', token);
+        // Mengecek apakah data dibungkus objek "data" atau tidak
+        if (responseBody['data'] != null) {
+          token = responseBody['data']['token'];
+          userId = responseBody['data']['user_id'] ?? (responseBody['data']['user'] != null ? responseBody['data']['user']['id'] : null);
+        } else {
+          token = responseBody['token'];
+          userId = responseBody['user_id'] ?? (responseBody['user'] != null ? responseBody['user']['id'] : null);
+        }
 
-        return true;
+        // --- 2. SIMPAN KEDUANYA KE MEMORI HP ---
+        if (token != null && userId != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('jwt_token', token);
+          await prefs.setInt('currentUserId', userId); // SIMPAN ID BIAR PROFILE GAK LOADING
+          
+          print("🎉 LOGIN MANUAL SUKSES! ID: $userId");
+          return true;
+        } else {
+          print("❌ Data Token atau ID tidak ditemukan di JSON");
+          return false;
+        }
       } else {
         print("Login Gagal: ${response.body}");
         return false;

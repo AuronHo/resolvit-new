@@ -1,24 +1,82 @@
 import 'package:flutter/material.dart';
-
+import '../../../services/api_service.dart';
 
 class SetupBusinessProfileScreen extends StatefulWidget {
   const SetupBusinessProfileScreen({super.key});
 
   @override
-  State<SetupBusinessProfileScreen> createState() => _SetupBusinessProfileScreenState();
+  State<SetupBusinessProfileScreen> createState() =>
+      _SetupBusinessProfileScreenState();
 }
 
-class _SetupBusinessProfileScreenState extends State<SetupBusinessProfileScreen> {
-  // Map for Operational Hours
-  final Map<String, bool> _operationalDays = {
-    'Monday': true,
-    'Tuesday': true,
-    'Wednesday': true,
-    'Thursday': true,
-    'Friday': true,
-    'Saturday': true,
-    'Sunday': false,
-  };
+class _SetupBusinessProfileScreenState
+    extends State<SetupBusinessProfileScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _serviceNameController = TextEditingController();
+  final _specialityController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  bool _isLoading = false;
+
+  int _providerId = 0;
+  String _businessName = '';
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_providerId == 0) {
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map) {
+        _providerId = (args['provider_id'] as int?) ?? 0;
+        _businessName = (args['business_name'] as String?) ?? '';
+        if (_serviceNameController.text.isEmpty && _businessName.isNotEmpty) {
+          _serviceNameController.text = _businessName;
+        }
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _serviceNameController.dispose();
+    _specialityController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleFinish() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final price = int.tryParse(_priceController.text.trim()) ?? 0;
+
+    setState(() => _isLoading = true);
+    try {
+      final currentId = _providerId != 0
+          ? _providerId
+          : (await ApiService.getCurrentUserId() ?? 0);
+
+      await ApiService.createService(
+        providerId: currentId,
+        namaJasa: _serviceNameController.text.trim(),
+        kategori: _specialityController.text.trim(),
+        deskripsi: _descriptionController.text.trim(),
+        hargaMulai: price,
+      );
+
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+          context, '/business_profile', (route) => false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +92,9 @@ class _SetupBusinessProfileScreenState extends State<SetupBusinessProfileScreen>
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Service Provider Register',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          'Set Up Business Profile',
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         shape: const RoundedRectangleBorder(
@@ -43,211 +102,123 @@ class _SetupBusinessProfileScreenState extends State<SetupBusinessProfileScreen>
         ),
       ),
       body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            
-            const Text(
-              "Set up your business profile",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            
-            const SizedBox(height: 20),
-
-            // --- IMAGE UPLOAD ---
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundColor: Colors.grey[600],
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 30),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 30),
+              const Center(
+                child: Text(
+                  "Set up your business profile",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text("Select Picture*", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                  ],
-                )
-              ],
-            ),
-
-            const SizedBox(height: 30),
-
-            // --- FORM FIELDS ---
-            _buildFormRow('Speciality*', _buildGreyInput()),
-            _buildFormRow('Price Range*', Row(
-              children: [
-                const Text("Start from Rp ", style: TextStyle(fontSize: 12)),
-                const SizedBox(width: 8),
-                Expanded(child: _buildGreyInput()),
-              ],
-            )),
-            _buildFormRow('Description*', _buildGreyInput(lines: 4)),
-
-            // --- OPERATIONAL HOURS ---
-            _buildFormRow(
-              'Operational hours*',
-              Column(
-                children: _operationalDays.keys.map((day) {
-                  return _buildDayRow(day);
-                }).toList(),
               ),
-            ),
+              const SizedBox(height: 30),
 
-            // --- SET LOCATION (FIXED LAYOUT) ---
-            _buildFormRow(
-              'Set Location*',
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Map Placeholder (Left)
-                  Container(
-                    width: 100, // Adjusted width
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey.shade300),
-                      image: const DecorationImage(
-                        image: NetworkImage('https://via.placeholder.com/100x80?text=Map'),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    // Adding a marker icon to simulate the map look
-                    child: const Center(child: Icon(Icons.location_on, color: Colors.red, size: 30)),
-                  ),
-                  const SizedBox(width: 12),
-                  // Location Details Input (Right)
-                  Expanded(
-                    child: _buildGreyInput(lines: 3, hint: 'Location details'),
-                  ),
-                ],
+              _buildLabel('Service Name*'),
+              _buildField(
+                controller: _serviceNameController,
+                hint: 'e.g. Buana Phone Service',
+                validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
-            ),
 
-            const SizedBox(height: 40),
+              const SizedBox(height: 16),
 
-            // --- FINISH BUTTON ---
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(context, '/business_profile', (route) => false);
+              _buildLabel('Speciality / Category*'),
+              _buildField(
+                controller: _specialityController,
+                hint: 'e.g. Phone Repair, Website, AC Service',
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+
+              const SizedBox(height: 16),
+
+              _buildLabel('Starting Price (Rp)*'),
+              _buildField(
+                controller: _priceController,
+                hint: 'e.g. 50000',
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  if (v!.isEmpty) return 'Required';
+                  if (int.tryParse(v) == null) return 'Enter a number';
+                  return null;
                 },
+              ),
+
+              const SizedBox(height: 16),
+
+              _buildLabel('Description*'),
+              _buildField(
+                controller: _descriptionController,
+                hint: 'Describe your service...',
+                maxLines: 4,
+                validator: (v) => v!.isEmpty ? 'Required' : null,
+              ),
+
+              const SizedBox(height: 40),
+
+              ElevatedButton(
+                onPressed: _isLoading ? null : _handleFinish,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: brandBlue,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30)),
+                  minimumSize: const Size(double.infinity, 55),
                 ),
-                child: const Text("Finish", style: TextStyle(fontWeight: FontWeight.bold)),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Finish',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16)),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
 
-  // --- HELPER WIDGETS ---
-
-  Widget _buildFormRow(String label, Widget content) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      decoration: const BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey, width: 0.2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+              const SizedBox(height: 40),
+            ],
           ),
-          Expanded(child: content),
-        ],
-      ),
-    );
-  }
-
-  // --- FIXED GREY INPUT ---
-  Widget _buildGreyInput({int lines = 1, String hint = ''}) {
-    return Container(
-      height: lines * 35.0,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.grey[200], // This gives the grey background
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: TextField(
-        maxLines: lines,
-        style: const TextStyle(fontSize: 12),
-        decoration: InputDecoration(
-          // Important: Make background transparent so Container color shows
-          filled: true,
-          fillColor: Colors.transparent, 
-          
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-          
-          hintText: hint,
-          hintStyle: const TextStyle(fontSize: 12, color: Colors.grey),
-          contentPadding: const EdgeInsets.only(bottom: 12), // Vertical alignment
         ),
       ),
     );
   }
 
-  // --- FIXED DAY ROW TOGGLE ---
-  Widget _buildDayRow(String day) {
+  Widget _buildLabel(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: Row(
-        children: [
-          // Switch
-          SizedBox(
-            width: 30,
-            height: 20,
-            child: Transform.scale(
-              scale: 0.6,
-              child: Switch(
-                value: _operationalDays[day]!,
-                activeColor: Colors.green,
-                inactiveTrackColor: Colors.grey[300], // Visible when off
-                onChanged: (val) {
-                  setState(() {
-                    _operationalDays[day] = val;
-                  });
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          
-          // Day Name (Always visible)
-          SizedBox(
-            width: 70, 
-            child: Text(day, style: const TextStyle(fontSize: 11)),
-          ),
-          
-          // Time Inputs or Closed Text
-          if (_operationalDays[day]!) ...[
-            Expanded(child: _buildGreyInput(lines: 1)),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 4.0),
-              child: Text("-", style: TextStyle(fontSize: 10)),
-            ),
-            Expanded(child: _buildGreyInput(lines: 1)),
-          ] else 
-            // When toggle is off, show empty grey boxes or "Closed" text
-            const Expanded(
-              child: Text("Closed", style: TextStyle(fontSize: 11, color: Colors.grey)),
-            ),
-        ],
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(text,
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+    );
+  }
+
+  Widget _buildField({
+    required TextEditingController controller,
+    required String hint,
+    String? Function(String?)? validator,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      maxLines: maxLines,
+      validator: validator,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey[200],
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide:
+              const BorderSide(color: Color(0xFF4981FB), width: 2),
+        ),
       ),
     );
   }

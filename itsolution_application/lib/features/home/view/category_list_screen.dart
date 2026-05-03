@@ -173,7 +173,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                               rating: item['RatingRataRata']?.toString() ?? '0.0',
                               isOpen: item['IsOpen'] ?? true,
                               imageUrl: item['ImageUrl'] ?? randomImageUrl,
-                              onTap: () => Navigator.pushNamed(context, '/service_detail'),
+                              onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
                             ),
                           );
                         },
