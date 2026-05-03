@@ -40,6 +40,34 @@ func GetRecommendations(c *gin.Context) {
 	})
 }
 
+func CreateService(c *gin.Context) {
+	var input struct {
+		ProviderID    int    `json:"provider_id"`
+		NamaJasa      string `json:"NamaJasa"`
+		Kategori      string `json:"Kategori"`
+		DeskripsiJasa string `json:"DeskripsiJasa"`
+		HargaMulai    int64  `json:"HargaMulai"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || input.ProviderID == 0 || input.NamaJasa == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id and NamaJasa are required"})
+		return
+	}
+
+	service := models.Service{
+		ProviderID:    input.ProviderID,
+		NamaJasa:      input.NamaJasa,
+		Kategori:      input.Kategori,
+		DeskripsiJasa: input.DeskripsiJasa,
+		HargaMulai:    input.HargaMulai,
+		IsOpen:        true,
+	}
+	if err := config.DB.Create(&service).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create service"})
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{"message": "Service created", "service": service})
+}
+
 func GetServicesByCategory(c *gin.Context) {
 	categoryName := c.Query("name")
 

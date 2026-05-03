@@ -31,4 +31,9 @@ class BookmarkProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  void clearData() {
+    _savedList = [];
+    notifyListeners();
+  }
 }

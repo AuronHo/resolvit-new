@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../logic/auth_controller.dart';
+import '../../../services/api_service.dart';
 // import '../../main_navigation/logic/theme_controller.dart'; // Not needed for white background
 
 class ServiceProviderRegisterScreen extends StatefulWidget {
@@ -27,25 +28,51 @@ class _ServiceProviderRegisterScreenState
   Future<void> _handleRegistration() async {
     final authController = context.read<AuthController>();
 
-    // Simple Validation
-    if (_formKey.currentState!.validate() && authController.agreedToTerms) {
-      setState(() => _isLoading = true);
-
-      // --- DUMMY LOADING (No Backend) ---
-      await Future.delayed(const Duration(seconds: 1));
-
-      if (!mounted) return;
-      setState(() => _isLoading = false);
-
-      // --- NAVIGATE TO SETUP PROFILE ---
-      Navigator.pushNamed(context, '/setup_business_profile');
-    } else if (!authController.agreedToTerms) {
+    if (!_formKey.currentState!.validate()) return;
+    if (!authController.agreedToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You must accept Terms & Conditions'),
           backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
+
+    if (_passwordController.text != _confirmPasswordController.text) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Passwords do not match'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final data = await ApiService.registerAsProvider(
+        businessName: _businessNameController.text.trim(),
+        businessEmail: _businessEmailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        '/setup_business_profile',
+        arguments: {
+          'provider_id': data['user_id'] as int? ?? 0,
+          'business_name': _businessNameController.text.trim(),
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

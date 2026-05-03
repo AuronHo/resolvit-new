@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/api_service.dart'; // Sesuaikan path ini
+import '../../../providers/bookmark_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,6 +19,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _email = '';
   String _phone = '';
   String _avatarUrl = '';
+  String _role = 'customer';
 
   @override
   void initState() {
@@ -28,8 +33,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final currentUserId = await ApiService.getCurrentUserId();
 
       if (currentUserId == null) {
-        // Jika null, berarti belum login, arahkan ke layar login
         print("User belum login!");
+        if (mounted) {
+          setState(() {
+            _isLoading = false; // HENTIKAN LOADING-NYA DI SINI
+          });
+        }
         return;
       }
 
@@ -45,6 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _email = user['email'] ?? 'No Email';
           _phone = user['phone'] ?? '-';
           _avatarUrl = user['avatar_url'] ?? 'https://i.pravatar.cc/300';
+          _role = user['role'] ?? 'customer';
           _isLoading = false;
         });
       }
@@ -54,6 +64,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      // 1. Tampilkan indikator loading (opsional tapi bagus untuk UX)
+      setState(() {
+        _isLoading = true;
+      });
+
+      // 2. Hapus sesi dari memori HP
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('currentUserId');
+      await prefs.remove('jwt_token');
+
+      // 3. Logout dari Google (Jika user pakai Google Sign-In)
+      try {
+       await GoogleSignIn.instance.signOut();
+      } catch (e) {
+        print("Bukan sesi Google Sign-In: $e");
+      }
+
+      // 4. Bersihkan data 'Saved' dari Provider agar tidak membekas
+      if (context.mounted) {
+        Provider.of<BookmarkProvider>(context, listen: false).clearData();
+      }
+
+      // 5. Tendang user ke halaman Login & hancurkan semua tumpukan layar sebelumnya
+      if (context.mounted) {
+        Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+      }
+    } catch (e) {
+      print("Gagal logout: $e");
+      if (context.mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal Log Out: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -132,7 +183,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         // Tombol Edit
                         TextButton(
                           onPressed: () {
-                            Navigator.pushNamed(context, '/edit_profile');
+                            Navigator.pushNamed(context, '/edit_profile')
+                                .then((_) => _fetchProfileData());
                           },
                           child: const Text(
                             'edit',
@@ -183,17 +235,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: 'Service Provider Register',
                     trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                     onTap: () {
-                      Navigator.pushNamed(context, '/service_provider_register');
+                      Navigator.pushNamed(context, '/service_provider_register')
+                          .then((_) => _fetchProfileData());
                     },
                   ),
-                  
-                  // Tombol Logout (Optional tapi penting)
+
+                  if (_role == 'provider')
+                    _buildActionRow(
+                      title: 'My Business Profile',
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      onTap: () {
+                        Navigator.pushNamed(context, '/business_profile');
+                      },
+                    ),
+
                   _buildActionRow(
                     title: 'Log Out',
                     trailing: const Icon(Icons.logout, size: 16, color: Colors.redAccent),
                     onTap: () {
                       // TODO: Hapus token dan kembali ke layar login
-                      print("User Logged Out");
+                      _logout(context);
                     },
                   ),
                   
