@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../services/api_service.dart';
+import '../../main_navigation/logic/navigation_controller.dart';
 import 'chat_detail_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -13,6 +15,7 @@ class _ChatScreenState extends State<ChatScreen> {
   List<dynamic> _rooms = [];
   bool _isLoading = true;
   int? _currentUserId;
+  bool? _lastBusinessMode;
 
   @override
   void initState() {
@@ -21,8 +24,19 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _loadRooms() async {
+    setState(() => _isLoading = true);
     try {
-      final userId = await ApiService.getCurrentUserId();
+      final isBusinessMode =
+          context.read<NavigationController>().isBusinessProfile;
+
+      final int? userId;
+      if (isBusinessMode) {
+        userId = await ApiService.getBusinessUserId() ??
+            await ApiService.getCurrentUserId();
+      } else {
+        userId = await ApiService.getCurrentUserId();
+      }
+
       if (userId == null) {
         if (mounted) setState(() => _isLoading = false);
         return;
@@ -43,16 +57,23 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     const Color brandBlue = Color(0xFF4981FB);
+    final isBusinessMode =
+        context.watch<NavigationController>().isBusinessProfile;
+
+    // Reload when account mode switches
+    if (_lastBusinessMode != isBusinessMode) {
+      _lastBusinessMode = isBusinessMode;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _loadRooms());
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // --- HEADER ---
           Container(
-            padding:
-                const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
+            padding: const EdgeInsets.only(
+                top: 50, left: 20, right: 20, bottom: 20),
             decoration: const BoxDecoration(
               color: brandBlue,
               borderRadius: BorderRadius.only(
@@ -60,44 +81,57 @@ class _ChatScreenState extends State<ChatScreen> {
                 bottomRight: Radius.circular(30),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Container(
-                    height: 45,
-                    decoration: BoxDecoration(
+                Text(
+                  isBusinessMode ? 'Business Chat' : 'Chat',
+                  style: const TextStyle(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        height: 45,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: const TextField(
-                        textAlignVertical: TextAlignVertical.center,
-                        decoration: InputDecoration(
-                          hintText: 'Search Chat',
-                          hintStyle:
-                              TextStyle(color: Colors.grey, fontSize: 14),
-                          filled: true,
-                          fillColor: Colors.transparent,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          contentPadding:
-                              EdgeInsets.symmetric(horizontal: 20),
-                          suffixIcon: Icon(Icons.search,
-                              color: Color(0xFF4981FB), size: 20),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: const TextField(
+                            textAlignVertical: TextAlignVertical.center,
+                            decoration: InputDecoration(
+                              hintText: 'Search Chat',
+                              hintStyle:
+                                  TextStyle(color: Colors.grey, fontSize: 14),
+                              filled: true,
+                              fillColor: Colors.transparent,
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.symmetric(horizontal: 20),
+                              suffixIcon: Icon(Icons.search,
+                                  color: Color(0xFF4981FB), size: 20),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -105,11 +139,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
           const SizedBox(height: 20),
 
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 24.0),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: Text(
-              'Conversation',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              isBusinessMode ? 'Customer Messages' : 'Conversation',
+              style: const TextStyle(
+                  fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
 
@@ -129,14 +164,19 @@ class _ChatScreenState extends State<ChatScreen> {
                                 height: 300,
                                 child: Center(
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.center,
                                     children: [
                                       Icon(Icons.chat_bubble_outline,
                                           size: 64, color: Colors.grey[300]),
                                       const SizedBox(height: 16),
-                                      Text('No conversations yet',
-                                          style: TextStyle(
-                                              color: Colors.grey[400])),
+                                      Text(
+                                        isBusinessMode
+                                            ? 'No customer messages yet'
+                                            : 'No conversations yet',
+                                        style: TextStyle(
+                                            color: Colors.grey[400]),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -152,21 +192,24 @@ class _ChatScreenState extends State<ChatScreen> {
                                   room['partner_name']?.toString() ?? '';
                               final partnerName = rawName.isNotEmpty
                                   ? rawName
-                                  : (room['jasa_name']?.toString() ?? 'User');
+                                  : (room['jasa_name']?.toString() ??
+                                      'User');
                               final partnerAvatar =
                                   room['partner_avatar']?.toString() ?? '';
                               final lastMessage =
                                   room['last_message']?.toString() ?? '';
 
                               return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 24, vertical: 8),
+                                contentPadding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 24, vertical: 8),
                                 leading: CircleAvatar(
                                   radius: 28,
                                   backgroundColor: Colors.grey,
-                                  backgroundImage: partnerAvatar.isNotEmpty
-                                      ? NetworkImage(partnerAvatar)
-                                      : null,
+                                  backgroundImage:
+                                      partnerAvatar.isNotEmpty
+                                          ? NetworkImage(partnerAvatar)
+                                          : null,
                                   child: partnerAvatar.isEmpty
                                       ? Text(
                                           partnerName.isNotEmpty
@@ -178,17 +221,16 @@ class _ChatScreenState extends State<ChatScreen> {
                                         )
                                       : null,
                                 ),
-                                title: Text(
-                                  partnerName,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14),
-                                ),
+                                title: Text(partnerName,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14)),
                                 subtitle: Text(
                                   lastMessage.isNotEmpty
                                       ? lastMessage
                                       : 'Tap to chat',
-                                  style: const TextStyle(color: Colors.grey),
+                                  style:
+                                      const TextStyle(color: Colors.grey),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),

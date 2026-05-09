@@ -176,8 +176,8 @@ class _SearchPageState extends State<SearchPage> {
                                   ? 'Rp ${item['HargaMulai']}' 
                                   : 'Hubungi Kami',
                               rating: item['RatingRataRata']?.toString() ?? '0.0',
-                              isOpen: true,
-                              imageUrl: 'https://loremflickr.com/320/240/technician?lock=$index',
+                              isOpen: item['IsOpen'] == true,
+                              imageUrl: item['ImageUrl']?.toString() ?? '',
                               onTap: () {
                                Navigator.pushNamed(context, '/service_detail', arguments: item);
                               },

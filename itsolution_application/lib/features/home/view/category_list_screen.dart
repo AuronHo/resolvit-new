@@ -157,11 +157,6 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                           }
 
                           final item = _services[index];
-                          
-                          // RANDOM FOTO CERDAS: Gunakan ID agar gambarnya konsisten
-                          final randomId = item['JasaID'] ?? index;
-                          final String randomImageUrl = 'https://loremflickr.com/320/240/technician,computer?random=$randomId';
-
                           return Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
                             child: ServiceCard(
@@ -172,7 +167,7 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                               price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
                               rating: item['RatingRataRata']?.toString() ?? '0.0',
                               isOpen: item['IsOpen'] ?? true,
-                              imageUrl: item['ImageUrl'] ?? randomImageUrl,
+                              imageUrl: item['ImageUrl']?.toString() ?? '',
                               onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
                             ),
                           );

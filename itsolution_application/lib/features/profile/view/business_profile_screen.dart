@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../main_navigation/logic/navigation_controller.dart';
 import '../../main_navigation/view/widgets/custom_bottom_nav_bar.dart';
 import '../../../services/api_service.dart';
+import '../../../providers/bookmark_provider.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   const BusinessProfileScreen({super.key});
@@ -40,6 +43,18 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen>
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('currentUserId');
+    await prefs.remove('jwt_token');
+    await prefs.remove('business_user_id');
+    try { await GoogleSignIn.instance.signOut(); } catch (_) {}
+    if (!mounted) return;
+    Provider.of<BookmarkProvider>(context, listen: false).clearData();
+    Provider.of<NavigationController>(context, listen: false).setBusinessProfile(false);
+    Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
   }
 
   Future<void> _loadData() async {
@@ -118,9 +133,36 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen>
           IconButton(
             icon: const Icon(Icons.edit, color: Colors.white),
             tooltip: 'Edit Profile',
-            onPressed: () => Navigator.pushNamed(
-                    context, '/edit_business_profile')
+            onPressed: () => Navigator.pushNamed(context, '/edit_business_profile')
                 .then((_) => _loadData()),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'personal') {
+                context.read<NavigationController>().setBusinessProfile(false);
+              } else if (value == 'logout') {
+                _logout();
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'personal',
+                child: Row(children: [
+                  Icon(Icons.person_outline, size: 20),
+                  SizedBox(width: 12),
+                  Text('Switch to Personal'),
+                ]),
+              ),
+              PopupMenuItem(
+                value: 'logout',
+                child: Row(children: [
+                  Icon(Icons.logout, size: 20, color: Colors.red),
+                  SizedBox(width: 12),
+                  Text('Log Out', style: TextStyle(color: Colors.red)),
+                ]),
+              ),
+            ],
           ),
         ],
       ),

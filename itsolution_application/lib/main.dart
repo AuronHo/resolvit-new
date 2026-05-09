@@ -24,10 +24,8 @@ import 'features/auth/view/service_provider_register_screen.dart';
 import 'features/auth/view/setup_business_profile_screen.dart';
 import 'features/profile/view/business_profile_screen.dart';
 import 'features/profile/view/business_view_details_screen.dart';
-import 'features/profile/view/edit_business_details_screen.dart';
 import 'features/profile/view/settings_screen.dart';
 import 'features/profile/view/edit_profile_screen.dart';
-import 'features/profile/view/test_screen.dart';
 import 'features/notification/view/notification_screen.dart';
 import 'features/notification/view/rate_service_screen.dart';
 import 'features/saved/view/saved_screen.dart';
@@ -148,10 +146,9 @@ class MyApp extends StatelessWidget {
         '/setup_business_profile': (context) => const SetupBusinessProfileScreen(),
         '/business_profile': (context) => const BusinessProfileScreen(),
         '/business_view_details': (context) => const BusinessViewDetailsScreen(),
-        '/edit_business_details': (context) => const EditBusinessDetailsScreen(),
+        '/edit_business_details': (context) => const EditBusinessProfileScreen(),
         '/settings': (context) => const SettingsScreen(),
         '/edit_profile': (context) => const EditProfileScreen(),
-        '/test_screen': (context) => const TestScreen(),
         '/notification': (context) => const NotificationScreen(),
         '/rate_service': (context) => const RateServiceScreen(),
         '/saved': (context) => const SavedScreen(),

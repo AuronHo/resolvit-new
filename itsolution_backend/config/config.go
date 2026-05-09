@@ -5,7 +5,7 @@ import "os"
 func GetJWTSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		return []byte("rahasia_skripsi_auron_123")
+		panic("JWT_SECRET environment variable is not set")
 	}
 	return []byte(secret)
 }

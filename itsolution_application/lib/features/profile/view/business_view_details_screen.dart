@@ -35,17 +35,6 @@ class BusinessViewDetailsScreen extends StatelessWidget {
           'My Business Details',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            onPressed: () {
-              final nav = Navigator.of(context);
-              nav
-                  .pushNamed('/edit_business_details', arguments: service)
-                  .then((_) => nav.pop());
-            },
-          ),
-        ],
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
         ),

@@ -14,22 +14,26 @@ import (
 
 // GetRecommendations fetches top-rated services for the Home Screen
 func GetRecommendations(c *gin.Context) {
-	var services []models.Service
-
 	userID := c.Query("user_id")
 	if userID == "" {
-		userID = "0" // Jika tidak ada yang login, anggap ID 0 (tidak ada bookmark)
+		userID = "0"
 	}
 
-	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
-	err := config.DB.Table("services").
-		Select("services.*, CASE WHEN saved_services.id IS NOT NULL THEN true ELSE false END as \"IsBookmarked\"").
-		Joins("LEFT JOIN saved_services ON services.\"JasaID\" = saved_services.jasa_id AND saved_services.user_id = ?", userID).
-		Order("services.\"RatingRataRata\" DESC"). // Tambahkan prefix services. agar tidak ambigu
-		Limit(5).
-		Find(&services).Error
-
-	if err != nil {
+	sql := `
+		SELECT
+			s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
+			s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
+			s.is_open, s.location, s.operational_hours, s.created_at,
+			COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url,
+			CASE WHEN ss.id IS NOT NULL THEN true ELSE false END AS "IsBookmarked"
+		FROM services s
+		LEFT JOIN saved_services ss ON s."JasaID" = ss.jasa_id AND ss.user_id = ?
+		LEFT JOIN users u ON u.id = s."ProviderID"
+		ORDER BY s."RatingRataRata" DESC
+		LIMIT 5
+	`
+	var services []models.Service
+	if err := config.DB.Raw(sql, userID).Scan(&services).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch recommendations"})
 		return
 	}
@@ -99,11 +103,13 @@ func UpdateService(c *gin.Context) {
 
 func CreateService(c *gin.Context) {
 	var input struct {
-		ProviderID    int    `json:"provider_id"`
-		NamaJasa      string `json:"NamaJasa"`
-		Kategori      string `json:"Kategori"`
-		DeskripsiJasa string `json:"DeskripsiJasa"`
-		HargaMulai    int64  `json:"HargaMulai"`
+		ProviderID       int    `json:"provider_id"`
+		NamaJasa         string `json:"NamaJasa"`
+		Kategori         string `json:"Kategori"`
+		DeskripsiJasa    string `json:"DeskripsiJasa"`
+		HargaMulai       int64  `json:"HargaMulai"`
+		Location         string `json:"location"`
+		OperationalHours string `json:"operational_hours"`
 	}
 	if err := c.ShouldBindJSON(&input); err != nil || input.ProviderID == 0 || input.NamaJasa == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "provider_id and NamaJasa are required"})
@@ -114,11 +120,13 @@ func CreateService(c *gin.Context) {
 	var existing models.Service
 	if config.DB.Where(`"ProviderID" = ?`, input.ProviderID).Order(`"JasaID" DESC`).First(&existing).Error == nil {
 		updates := map[string]interface{}{
-			"NamaJasa":      input.NamaJasa,
-			"Kategori":      input.Kategori,
-			"DeskripsiJasa": input.DeskripsiJasa,
-			"HargaMulai":    input.HargaMulai,
-			"is_open":       true,
+			"NamaJasa":         input.NamaJasa,
+			"Kategori":         input.Kategori,
+			"DeskripsiJasa":    input.DeskripsiJasa,
+			"HargaMulai":       input.HargaMulai,
+			"location":         input.Location,
+			"operational_hours": input.OperationalHours,
+			"is_open":          true,
 		}
 		config.DB.Model(&existing).Updates(updates)
 		c.JSON(http.StatusOK, gin.H{"message": "Service updated", "service": existing})
@@ -126,12 +134,14 @@ func CreateService(c *gin.Context) {
 	}
 
 	service := models.Service{
-		ProviderID:    input.ProviderID,
-		NamaJasa:      input.NamaJasa,
-		Kategori:      input.Kategori,
-		DeskripsiJasa: input.DeskripsiJasa,
-		HargaMulai:    input.HargaMulai,
-		IsOpen:        true,
+		ProviderID:       input.ProviderID,
+		NamaJasa:         input.NamaJasa,
+		Kategori:         input.Kategori,
+		DeskripsiJasa:    input.DeskripsiJasa,
+		HargaMulai:       input.HargaMulai,
+		Location:         input.Location,
+		OperationalHours: input.OperationalHours,
+		IsOpen:           true,
 	}
 	if err := config.DB.Create(&service).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create service"})
@@ -142,29 +152,31 @@ func CreateService(c *gin.Context) {
 
 func GetServicesByCategory(c *gin.Context) {
 	categoryName := c.Query("name")
-
-	// LOGIKA PAGINATION KAMU SAMA SEKALI TIDAK DIUBAH
 	pageStr := c.DefaultQuery("page", "1")
 	page, _ := strconv.Atoi(pageStr)
 	limit := 10
 	offset := (page - 1) * limit
 
-	var services []models.Service
 	userID := c.Query("user_id")
 	if userID == "" {
-		userID = "0" // Jika tidak ada yang login, anggap ID 0 (tidak ada bookmark)
+		userID = "0"
 	}
 
-	// LOGIKA SAMA, HANYA DITAMBAH SELECT & LEFT JOIN
-	err := config.DB.Table("services").
-		Select("services.*, CASE WHEN saved_services.id IS NOT NULL THEN true ELSE false END as \"IsBookmarked\"").
-		Joins("LEFT JOIN saved_services ON services.\"JasaID\" = saved_services.jasa_id AND saved_services.user_id = ?", userID).
-		Where("services.\"Kategori\" = ?", categoryName). // Tambahkan prefix services.
-		Limit(limit).
-		Offset(offset).
-		Find(&services).Error
-
-	if err != nil {
+	sql := `
+		SELECT
+			s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
+			s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
+			s.is_open, s.location, s.operational_hours, s.created_at,
+			COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url,
+			CASE WHEN ss.id IS NOT NULL THEN true ELSE false END AS "IsBookmarked"
+		FROM services s
+		LEFT JOIN saved_services ss ON s."JasaID" = ss.jasa_id AND ss.user_id = ?
+		LEFT JOIN users u ON u.id = s."ProviderID"
+		WHERE s."Kategori" = ?
+		LIMIT ? OFFSET ?
+	`
+	var services []models.Service
+	if err := config.DB.Raw(sql, userID, categoryName, limit, offset).Scan(&services).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch services"})
 		return
 	}

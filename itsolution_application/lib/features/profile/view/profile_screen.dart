@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../services/api_service.dart'; // Sesuaikan path ini
+import '../../../services/api_service.dart';
 import '../../../providers/bookmark_provider.dart';
+import '../../main_navigation/logic/navigation_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -34,8 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final currentUserId = await ApiService.getCurrentUserId();
 
       if (currentUserId == null) {
-        print("User belum login!");
-        if (mounted) {
+          if (mounted) {
           setState(() {
             _isLoading = false; // HENTIKAN LOADING-NYA DI SINI
           });
@@ -43,9 +43,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return;
       }
 
-      print("Sedang mengambil data untuk User ID: $currentUserId");
-
-      // 2. Gunakan ID asli tersebut untuk memanggil Golang
       final data = await ApiService.getUserProfile(userId: currentUserId);
       final user = data['user'];
       final businessId = await ApiService.getBusinessUserId();
@@ -61,13 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-      print("Error loading profile: $e");
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -85,32 +77,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.remove('business_user_id');
 
       // 3. Logout dari Google (Jika user pakai Google Sign-In)
-      try {
-       await GoogleSignIn.instance.signOut();
-      } catch (e) {
-        print("Bukan sesi Google Sign-In: $e");
-      }
+      try { await GoogleSignIn.instance.signOut(); } catch (_) {}
 
       // 4. Bersihkan data 'Saved' dari Provider agar tidak membekas
       if (context.mounted) {
         Provider.of<BookmarkProvider>(context, listen: false).clearData();
       }
 
-      // 5. Tendang user ke halaman Login & hancurkan semua tumpukan layar sebelumnya
+      // 5. Reset business mode then navigate to welcome
       if (context.mounted) {
+        Provider.of<NavigationController>(context, listen: false)
+            .setBusinessProfile(false);
         Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
       }
     } catch (e) {
-      print("Gagal logout: $e");
       if (context.mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal Log Out: $e'), backgroundColor: Colors.red),
         );
       }
     }
+  }
+
+  Future<void> _showBusinessLoginSheet(BuildContext context) async {
+    final emailCtrl = TextEditingController();
+    final passCtrl = TextEditingController();
+    bool loading = false;
+    String? error;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const Text('Log In to Business Account',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Business Email',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!, style: const TextStyle(color: Colors.red, fontSize: 13)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4981FB),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: loading
+                        ? null
+                        : () async {
+                            setModalState(() { loading = true; error = null; });
+                            try {
+                              final userId = await ApiService.getCurrentUserId();
+                              if (userId == null) throw Exception('Not logged in');
+                              final result = await ApiService.linkBusinessAccount(
+                                userId: userId,
+                                email: emailCtrl.text.trim(),
+                                password: passCtrl.text,
+                              );
+                              final providerId = result['provider_user_id'] as int?;
+                              if (providerId != null) {
+                                await ApiService.saveBusinessUserId(providerId);
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              _fetchProfileData();
+                            } catch (e) {
+                              setModalState(() {
+                                loading = false;
+                                error = e.toString().replaceFirst('Exception: ', '');
+                              });
+                            }
+                          },
+                    child: loading
+                        ? const SizedBox(width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Log In', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -235,7 +331,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
 
-                  if (!_hasBusinessAccount)
+                  if (!_hasBusinessAccount) ...[
                     _buildActionRow(
                       title: 'Service Provider Register',
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
@@ -244,8 +340,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             .then((_) => _fetchProfileData());
                       },
                     ),
+                    _buildActionRow(
+                      title: 'Log In to Business Account',
+                      trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                      onTap: () => _showBusinessLoginSheet(context),
+                    ),
+                  ],
 
-                  if (_role == 'provider')
+                  if (_hasBusinessAccount)
                     _buildActionRow(
                       title: 'My Business Profile',
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
@@ -257,10 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _buildActionRow(
                     title: 'Log Out',
                     trailing: const Icon(Icons.logout, size: 16, color: Colors.redAccent),
-                    onTap: () {
-                      // TODO: Hapus token dan kembali ke layar login
-                      _logout(context);
-                    },
+                    onTap: () => _logout(context),
                   ),
                   
                   const SizedBox(height: 100),

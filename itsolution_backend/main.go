@@ -64,6 +64,7 @@ func main() {
 	// Users
 	r.GET("/api/users/:id", controllers.GetUserProfile)
 	r.PUT("/api/users/:id", controllers.UpdateUserProfile)
+	r.POST("/api/users/link-provider", controllers.LinkProvider)
 
 	// Avatar upload
 	r.POST("/api/upload/avatar", controllers.UploadAvatar)

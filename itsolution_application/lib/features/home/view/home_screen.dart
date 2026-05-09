@@ -196,9 +196,7 @@ Future<void> _fetchRecommendations() async {
                             : 'Hubungi Kami',
                         rating: item['RatingRataRata']?.toString() ?? '0.0',
                         isOpen: item['IsOpen'] == true,
-                        imageUrl: (item['ImageUrl'] as String? ?? '').isNotEmpty
-                            ? item['ImageUrl'] as String
-                            : 'https://placehold.co/320x240/4981FB/FFFFFF/png?text=IT+Service',
+                        imageUrl: item['ImageUrl']?.toString() ?? '',
                         onTap: () {
                            Navigator.pushNamed(context, '/service_detail', arguments: item);
                         },

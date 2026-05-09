@@ -128,18 +128,14 @@ class AuthController extends ChangeNotifier {
             await prefs.setInt('business_user_id', linkedId as int);
           }
 
-          print("🎉 LOGIN MANUAL SUKSES! ID: $userId");
           return true;
         } else {
-          print("❌ Data Token atau ID tidak ditemukan di JSON");
           return false;
         }
       } else {
-        print("Login Gagal: ${response.body}");
         return false;
       }
-    } catch (e) {
-      print("Error Koneksi Login: $e");
+    } catch (_) {
       return false;
     }
   }

@@ -21,9 +21,6 @@ func ConnectDatabase() {
 	// 2. Ambil URL
 	dsn := os.Getenv("DB_URL")
 
-	// DEBUG: Cetak DSN untuk memastikan isinya tidak kosong (Hapus jika sudah berhasil)
-	fmt.Println("Menghubungkan ke:", dsn)
-
 	if dsn == "" {
 		panic("ERROR: DB_URL kosong! Cek file .env kamu.")
 	}

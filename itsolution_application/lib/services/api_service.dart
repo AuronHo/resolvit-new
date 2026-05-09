@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Central base URL — swap this for production when deployed
-  static const String _base = 'http://10.0.2.2:8080';
+  static const String _devBase = 'http://10.0.2.2:8080';
+  static const String _prodBase = 'https://YOUR_PRODUCTION_SERVER_URL'; // TODO: set before release
+
+  static String get _base => kReleaseMode ? _prodBase : _devBase;
 
   // ===========================================================================
   // AUTH HELPERS
@@ -209,6 +212,25 @@ class ApiService {
   // PROVIDER REGISTRATION
   // ===========================================================================
 
+  static Future<Map<String, dynamic>> linkBusinessAccount({
+    required int userId,
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$_base/api/users/link-provider'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'user_id': userId,
+        'email': email,
+        'password': password,
+      }),
+    );
+    final data = jsonDecode(response.body);
+    if (response.statusCode == 200) return data;
+    throw Exception(data['error'] ?? 'Failed to link account');
+  }
+
   static Future<Map<String, dynamic>> registerAsProvider({
     required String businessName,
     required String businessEmail,
@@ -273,6 +295,8 @@ class ApiService {
     required String kategori,
     required String deskripsi,
     required int hargaMulai,
+    String location = '',
+    String operationalHours = '',
   }) async {
     final response = await http.post(
       Uri.parse('$_base/api/services'),
@@ -283,6 +307,8 @@ class ApiService {
         'Kategori': kategori,
         'DeskripsiJasa': deskripsi,
         'HargaMulai': hargaMulai,
+        'location': location,
+        'operational_hours': operationalHours,
       }),
     );
     final data = jsonDecode(response.body);
@@ -362,7 +388,10 @@ class ApiService {
   }
 
   static String chatWebSocketUrl(int roomId, int userId) {
-    // ws:// for emulator; change host when deployed
+    if (kReleaseMode) {
+      final host = _prodBase.replaceFirst('https://', '');
+      return 'wss://$host/ws/chat/$roomId?user_id=$userId';
+    }
     return 'ws://10.0.2.2:8080/ws/chat/$roomId?user_id=$userId';
   }
 

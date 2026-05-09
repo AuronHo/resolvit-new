@@ -55,6 +55,47 @@ func UpdateUserProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Profile updated", "user": user})
 }
 
+func LinkProvider(c *gin.Context) {
+	var input struct {
+		UserID   int    `json:"user_id"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil || input.UserID == 0 || input.Email == "" || input.Password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id, email, and password required"})
+		return
+	}
+
+	var provider models.User
+	if err := config.DB.Where("email = ?", input.Email).First(&provider).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Business account not found"})
+		return
+	}
+
+	if !utils.CheckPasswordHash(input.Password, provider.Password) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Incorrect password"})
+		return
+	}
+
+	if provider.Role != "provider" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "That account is not a business account"})
+		return
+	}
+
+	providerID := int(provider.ID)
+	if err := config.DB.Model(&models.User{}).Where("id = ?", input.UserID).
+		Update("linked_provider_id", providerID).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to link accounts"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":          "Business account linked",
+		"provider_user_id": provider.ID,
+		"provider_name":    provider.Name,
+	})
+}
+
 func UpgradeToProvider(c *gin.Context) {
 	var input struct {
 		BusinessName  string `json:"business_name"`

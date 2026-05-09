@@ -62,14 +62,8 @@ class _ServiceCardState extends State<ServiceCard> {
     try {
       final currentUserId = await ApiService.getCurrentUserId();
 
-      print("===== DEBUG SAVE =====");
-      print("Mencoba save JasaID: ${widget.jasaId} untuk UserID: $currentUserId"); // Print dinamis!
-
-      // Jika ID kosong (belum login/belum tersimpan)
       if (currentUserId == null) {
-        print("GAGAL: User ID null. Mengembalikan warna icon.");
-        setState(() => _isSaved = !_isSaved); // Kembalikan warna
-        
+        setState(() => _isSaved = !_isSaved);
         if (mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
@@ -80,38 +74,20 @@ class _ServiceCardState extends State<ServiceCard> {
       }
 
       await ApiService.toggleSaveService(userId: currentUserId, jasaId: widget.jasaId);
-      
-      print("API Save Berhasil direspon Golang!");
-      print("======================");
 
-      // 3. Suruh Provider mengupdate daftar Saved di latar belakang
       if (mounted) {
         Provider.of<BookmarkProvider>(context, listen: false).loadSavedServices();
-      }
-
-      // 4. Tampilkan SnackBar kalau sukses
-      if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_isSaved ? 'Disimpan ke Favorit!' : 'Dihapus dari Favorit'),
-            backgroundColor: Colors.green, // Hijau kalau sukses
+            backgroundColor: Colors.green,
             duration: const Duration(seconds: 1),
           ),
         );
       }
     } catch (e) {
-      // CCTV 2: TANGKAP ERROR JIKA GAGAL
-      print("!!! ERROR API SAVE !!!");
-      print(e.toString());
-      print("======================");
-
-      // 4. KEMBALIKAN WARNA ICON SEPERTI SEMULA KARENA GAGAL
-      setState(() {
-        _isSaved = !_isSaved; 
-      });
-
-      // Tampilkan error merah
+      setState(() => _isSaved = !_isSaved);
       if (mounted) {
         ScaffoldMessenger.of(context).clearSnackBars();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -119,6 +95,55 @@ class _ServiceCardState extends State<ServiceCard> {
         );
       }
     }
+  }
+
+  IconData _categoryIcon(String specialty) {
+    final s = specialty.toLowerCase();
+    if (s.contains('phone') || s.contains('mobile')) return Icons.phone_android;
+    if (s.contains('laptop') || s.contains('pc') || s.contains('computer')) return Icons.laptop;
+    if (s.contains('web')) return Icons.web;
+    if (s.contains('app') || s.contains('android') || s.contains('ios')) return Icons.grid_view;
+    if (s.contains('cloud')) return Icons.cloud_queue;
+    if (s.contains('security') || s.contains('cyber')) return Icons.security;
+    if (s.contains('consult')) return Icons.business_center;
+    if (s.contains('network')) return Icons.hub;
+    if (s.contains('data') || s.contains('database')) return Icons.storage;
+    return Icons.computer;
+  }
+
+  Widget _buildPlaceholder(String specialty) {
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF4981FB), Color(0xFF173DDC)],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(_categoryIcon(specialty),
+              color: Colors.white.withValues(alpha: 0.9), size: 34),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text('IT',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -133,7 +158,7 @@ class _ServiceCardState extends State<ServiceCard> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -143,17 +168,18 @@ class _ServiceCardState extends State<ServiceCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. GAMBAR (Kotak di Kiri)
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.grey[200],
-                image: DecorationImage(
-                  image: NetworkImage(widget.imageUrl), // Berubah jadi widget.imageUrl
-                  fit: BoxFit.cover,
-                ),
-              ),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: widget.imageUrl.isNotEmpty
+                  ? Image.network(
+                      widget.imageUrl,
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          _buildPlaceholder(widget.specialty),
+                    )
+                  : _buildPlaceholder(widget.specialty),
             ),
             
             const SizedBox(width: 12), // Jarak
