@@ -16,11 +16,30 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true;
   int? _currentUserId;
   bool? _lastBusinessMode;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadRooms();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<dynamic> get _filteredRooms {
+    if (_searchQuery.isEmpty) return _rooms;
+    final q = _searchQuery.toLowerCase();
+    return _rooms.where((room) {
+      final name = (room['partner_name']?.toString() ?? '').toLowerCase();
+      final jasa = (room['jasa_name']?.toString() ?? '').toLowerCase();
+      final last = (room['last_message']?.toString() ?? '').toLowerCase();
+      return name.contains(q) || jasa.contains(q) || last.contains(q);
+    }).toList();
   }
 
   Future<void> _loadRooms() async {
@@ -111,9 +130,12 @@ class _ChatScreenState extends State<ChatScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(30),
-                          child: const TextField(
+                          child: TextField(
+                            controller: _searchController,
                             textAlignVertical: TextAlignVertical.center,
-                            decoration: InputDecoration(
+                            onChanged: (v) =>
+                                setState(() => _searchQuery = v.trim()),
+                            decoration: const InputDecoration(
                               hintText: 'Search Chat',
                               hintStyle:
                                   TextStyle(color: Colors.grey, fontSize: 14),
@@ -157,7 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 : RefreshIndicator(
                     color: brandBlue,
                     onRefresh: _loadRooms,
-                    child: _rooms.isEmpty
+                    child: _filteredRooms.isEmpty
                         ? ListView(
                             children: [
                               SizedBox(
@@ -171,9 +193,11 @@ class _ChatScreenState extends State<ChatScreen> {
                                           size: 64, color: Colors.grey[300]),
                                       const SizedBox(height: 16),
                                       Text(
-                                        isBusinessMode
-                                            ? 'No customer messages yet'
-                                            : 'No conversations yet',
+                                        _searchQuery.isNotEmpty
+                                            ? 'No results for "$_searchQuery"'
+                                            : isBusinessMode
+                                                ? 'No customer messages yet'
+                                                : 'No conversations yet',
                                         style: TextStyle(
                                             color: Colors.grey[400]),
                                       ),
@@ -185,9 +209,9 @@ class _ChatScreenState extends State<ChatScreen> {
                           )
                         : ListView.builder(
                             padding: EdgeInsets.zero,
-                            itemCount: _rooms.length,
+                            itemCount: _filteredRooms.length,
                             itemBuilder: (context, index) {
-                              final room = _rooms[index];
+                              final room = _filteredRooms[index];
                               final rawName =
                                   room['partner_name']?.toString() ?? '';
                               final partnerName = rawName.isNotEmpty

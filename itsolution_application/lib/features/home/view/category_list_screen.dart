@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import 'widgets/service_card.dart';
 import '../../../services/api_service.dart';
+import '../../../utils/responsive.dart';
 
 class CategoryListScreen extends StatefulWidget {
   const CategoryListScreen({super.key});
@@ -119,7 +120,9 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
                 Expanded(
                   child: TextField(
                     decoration: InputDecoration(
-                      hintText: 'Search in ${_categoryTitle ?? 'Category'}',
+                      hintText: _categoryTitle == null || _categoryTitle!.isEmpty
+                          ? 'Search all services'
+                          : 'Search in $_categoryTitle',
                       hintStyle: TextStyle(color: Colors.grey[500]),
                       fillColor: Colors.white,
                       filled: true,
@@ -141,35 +144,43 @@ class _CategoryListScreenState extends State<CategoryListScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator(color: kPrimaryBlue))
                 : _services.isEmpty
-                    ? const Center(child: Text('Belum ada jasa di kategori ini.'))
-                    : ListView.builder(
-                        controller: _scrollController, // Pasang Controller di sini
-                        padding: const EdgeInsets.only(top: 20, bottom: 20),
-                        itemCount: _services.length + (_hasMoreData ? 1 : 0), // Tambah 1 untuk loading spinner di bawah
+                    ? Center(
+                        child: Text(
+                          _categoryTitle == null || _categoryTitle!.isEmpty
+                              ? 'No services available yet.'
+                              : 'Belum ada jasa di kategori ini.',
+                        ),
+                      )
+                    : GridView.builder(
+                        controller: _scrollController,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 20,
+                        ),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: Responsive.isTablet(context) ? 2 : 1,
+                          mainAxisExtent: 150,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: _services.length + (_hasMoreData ? 1 : 0),
                         itemBuilder: (context, index) {
-                          
-                          // Jika sampai di index terakhir dan masih ada data, tampilkan loading kecil
                           if (index == _services.length) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 16.0),
-                              child: Center(child: CircularProgressIndicator(color: kPrimaryBlue)),
+                            return const Center(
+                              child: CircularProgressIndicator(color: kPrimaryBlue),
                             );
                           }
-
                           final item = _services[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                            child: ServiceCard(
-                              jasaId: item['JasaID'],
-                              initialIsSaved: item['IsBookmarked'] == true,
-                              title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
-                              specialty: item['Kategori'] ?? 'Umum',
-                              price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
-                              rating: item['RatingRataRata']?.toString() ?? '0.0',
-                              isOpen: item['IsOpen'] ?? true,
-                              imageUrl: item['ImageUrl']?.toString() ?? '',
-                              onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
-                            ),
+                          return ServiceCard(
+                            jasaId: item['JasaID'],
+                            initialIsSaved: item['IsBookmarked'] == true,
+                            title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
+                            specialty: item['Kategori'] ?? 'Umum',
+                            price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
+                            rating: item['RatingRataRata']?.toString() ?? '0.0',
+                            isOpen: item['IsOpen'] ?? true,
+                            imageUrl: item['ImageUrl']?.toString() ?? '',
+                            onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
                           );
                         },
                       ),

@@ -9,6 +9,7 @@ class ApiService {
   static const String _prodBase = 'https://YOUR_PRODUCTION_SERVER_URL'; // TODO: set before release
 
   static String get _base => kReleaseMode ? _prodBase : _devBase;
+  static String get baseUrl => _base;
 
   // ===========================================================================
   // AUTH HELPERS
@@ -254,6 +255,12 @@ class ApiService {
       return data;
     }
     throw Exception(data['error'] ?? 'Registration failed');
+  }
+
+  static Future<Map<String, dynamic>> getServiceById(int jasaId) async {
+    final response = await http.get(Uri.parse('$_base/api/services/$jasaId'));
+    if (response.statusCode == 200) return jsonDecode(response.body);
+    throw Exception('Service not found');
   }
 
   static Future<Map<String, dynamic>> getMyService(int userId) async {

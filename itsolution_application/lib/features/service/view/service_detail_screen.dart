@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../main_navigation/logic/navigation_controller.dart';
 import '../../chat/view/chat_detail_screen.dart';
 import '../../../services/api_service.dart';
+import '../../../utils/responsive.dart';
 
 class ServiceDetailScreen extends StatefulWidget {
   const ServiceDetailScreen({super.key});
@@ -170,7 +171,9 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: Responsive.constrain(
+        context,
+        SingleChildScrollView(
         child: Column(
           children: [
             // --- HEADER BANNER + CARD ---
@@ -325,6 +328,7 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
           ],
         ),
       ),
+      ),
       bottomNavigationBar: CustomBottomNavBar(
         selectedIndex: 0,
         onTap: (index) {
@@ -352,6 +356,30 @@ class _ServiceDetailScreenState extends State<ServiceDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                '/rate_service',
+                arguments: {
+                  'jasaId': _service['JasaID'],
+                  'jasaName': _service['NamaJasa'] ?? '',
+                  'imageUrl': _service['ImageUrl'] ?? '',
+                },
+              ).then((_) => _loadReviews()),
+              icon: const Icon(Icons.star_outline, size: 18),
+              label: const Text('Write a Review'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4981FB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30)),
+                minimumSize: const Size(0, 44),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
           const Text('Sort by',
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 10),

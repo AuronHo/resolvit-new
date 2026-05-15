@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../services/api_service.dart';
 
 class RateServiceScreen extends StatefulWidget {
   const RateServiceScreen({super.key});
@@ -8,8 +9,100 @@ class RateServiceScreen extends StatefulWidget {
 }
 
 class _RateServiceScreenState extends State<RateServiceScreen> {
-  int _rating = 0; // 0 to 5
+  int _rating = 0;
+  bool _isSubmitting = false;
+  bool _isLoadingService = true;
   final TextEditingController _commentController = TextEditingController();
+
+  int? _jasaId;
+  String _jasaName = '';
+  String _imageUrl = '';
+  bool _argsLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_argsLoaded) {
+      _argsLoaded = true;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic>) {
+        _jasaId = (args['jasaId'] as num?)?.toInt();
+        _jasaName = args['jasaName']?.toString() ?? '';
+        _imageUrl = args['imageUrl']?.toString() ?? '';
+      }
+      _loadService();
+    }
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadService() async {
+    if (_jasaId == null) {
+      setState(() => _isLoadingService = false);
+      return;
+    }
+    if (_jasaName.isNotEmpty) {
+      setState(() => _isLoadingService = false);
+      return;
+    }
+    try {
+      final data = await ApiService.getServiceById(_jasaId!);
+      final service = data['service'] as Map<String, dynamic>? ?? {};
+      if (mounted) {
+        setState(() {
+          _jasaName = service['NamaJasa']?.toString() ?? '';
+          _imageUrl = service['ImageUrl']?.toString() ?? '';
+          _isLoadingService = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingService = false);
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_jasaId == null) return;
+    if (_rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a rating')),
+      );
+      return;
+    }
+    setState(() => _isSubmitting = true);
+    try {
+      final userId = await ApiService.getCurrentUserId();
+      if (userId == null) throw Exception('Not logged in');
+      await ApiService.postReview(
+        jasaId: _jasaId!,
+        userId: userId,
+        rating: _rating,
+        comment: _commentController.text.trim(),
+      );
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Thank you for your rating!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to submit: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,139 +122,134 @@ class _RateServiceScreenState extends State<RateServiceScreen> {
             onPressed: () => Navigator.pop(context),
           ),
           title: const Text(
-            'Rate',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+            'Rate Service',
+            style: TextStyle(
+                color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
           ),
           centerTitle: false,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
           ),
         ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              children: [
-                const SizedBox(height: 10),
-                const Text(
-                  'Buana Phone Service',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                
-                // --- SHOP IMAGE ---
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey[300],
-                    image: const DecorationImage(
-                      image: NetworkImage('https://loremflickr.com/200/200/mobile,phone,logo?lock=buana'),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 30),
-                const Text(
-                  'How helpful was it?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                
-                const SizedBox(height: 16),
-                
-                // --- STAR RATING ---
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    return IconButton(
-                      icon: Icon(
-                        Icons.star,
-                        color: index < _rating ? Colors.amber : Colors.grey[300],
-                        size: 32,
+        body: _isLoadingService
+            ? const Center(
+                child: CircularProgressIndicator(color: brandBlue))
+            : SafeArea(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 10),
+                      Text(
+                        _jasaName.isNotEmpty ? _jasaName : 'Service',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
                       ),
-                      onPressed: () {
-                        setState(() {
-                          _rating = index + 1;
-                        });
-                      },
-                    );
-                  }),
-                ),
-                
-                const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                // --- COMMENT BOX ---
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEEEEEE),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextField(
-                    controller: _commentController,
-                    maxLines: 5,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: const InputDecoration(
-                      hintText: 'Leave some comments',
-                      hintStyle: TextStyle(color: Colors.grey, fontSize: 13),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // --- ADD PHOTO OPTION ---
-                Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.grey[400]!),
+                      // Service avatar
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[300],
+                          image: _imageUrl.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(_imageUrl),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: _imageUrl.isEmpty
+                            ? const Icon(Icons.business,
+                                size: 48, color: Colors.grey)
+                            : null,
                       ),
-                      child: const Icon(Icons.camera_alt, color: Colors.grey),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      "Add photos",
-                      style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
-                    )
-                  ],
-                ),
 
-                const SizedBox(height: 40),
-
-                // --- SUBMIT BUTTON ---
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      // Submit Logic -> Go Back
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Thank you for your rating!')),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4981FB),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      const SizedBox(height: 30),
+                      const Text(
+                        'How helpful was it?',
+                        style: TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.w600),
                       ),
-                    ),
-                    child: const Text('Submit', style: TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+
+                      // Star rating
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) {
+                          return IconButton(
+                            icon: Icon(
+                              Icons.star,
+                              color: index < _rating
+                                  ? Colors.amber
+                                  : Colors.grey[300],
+                              size: 36,
+                            ),
+                            onPressed: () =>
+                                setState(() => _rating = index + 1),
+                          );
+                        }),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Comment box
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEEEEEE),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _commentController,
+                          maxLines: 5,
+                          style: const TextStyle(fontSize: 13),
+                          decoration: const InputDecoration(
+                            hintText: 'Leave some comments',
+                            hintStyle:
+                                TextStyle(color: Colors.grey, fontSize: 13),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 40),
+
+                      // Submit
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _isSubmitting ? null : _submit,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: brandBlue,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                          ),
+                          child: _isSubmitting
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text('Submit',
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }

@@ -3,13 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../services/api_service.dart';
 
-
-// 1. We extend "ChangeNotifier". This class can "notify"
-//    the UI when its data changes.
 class AuthController extends ChangeNotifier {
-
-  final String apiUrl = "http://10.0.2.2:8080/api/register";
 
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -56,7 +52,7 @@ class AuthController extends ChangeNotifier {
   Future<String?> registerUser() async {
     try {
       final response = await http.post(
-        Uri.parse(apiUrl),
+        Uri.parse('${ApiService.baseUrl}/api/register'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "name": nameController.text,
@@ -89,7 +85,7 @@ class AuthController extends ChangeNotifier {
   Future<bool> loginUser(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse("http://10.0.2.2:8080/api/login"),
+        Uri.parse('${ApiService.baseUrl}/api/login'),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "email": email,
@@ -142,7 +138,7 @@ class AuthController extends ChangeNotifier {
 
   Future<Map<String, dynamic>> sendForgotPasswordOTP(String email) async {
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:8080/api/forgot-password"),
+      Uri.parse('${ApiService.baseUrl}/api/forgot-password'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"email": email}),
     );
@@ -151,7 +147,7 @@ class AuthController extends ChangeNotifier {
 
   Future<Map<String, dynamic>> resetPassword(String email, String otp, String newPassword) async {
     final response = await http.post(
-      Uri.parse("http://10.0.2.2:8080/api/reset-password"),
+      Uri.parse('${ApiService.baseUrl}/api/reset-password'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "email": email,

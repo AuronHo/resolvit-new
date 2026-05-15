@@ -44,6 +44,30 @@ func GetRecommendations(c *gin.Context) {
 	})
 }
 
+func GetServiceByID(c *gin.Context) {
+	id := c.Param("id")
+	sql := `
+		SELECT
+			s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
+			s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
+			s.is_open, s.location, s.operational_hours, s.created_at,
+			COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url
+		FROM services s
+		LEFT JOIN users u ON u.id = s."ProviderID"
+		WHERE s."JasaID" = ?
+	`
+	var service models.Service
+	if err := config.DB.Raw(sql, id).Scan(&service).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch service"})
+		return
+	}
+	if service.JasaID == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Service not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"service": service})
+}
+
 func GetMyService(c *gin.Context) {
 	userIDStr := c.Query("user_id")
 	userID, err := strconv.Atoi(userIDStr)
@@ -162,21 +186,42 @@ func GetServicesByCategory(c *gin.Context) {
 		userID = "0"
 	}
 
-	sql := `
-		SELECT
-			s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
-			s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
-			s.is_open, s.location, s.operational_hours, s.created_at,
-			COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url,
-			CASE WHEN ss.id IS NOT NULL THEN true ELSE false END AS "IsBookmarked"
-		FROM services s
-		LEFT JOIN saved_services ss ON s."JasaID" = ss.jasa_id AND ss.user_id = ?
-		LEFT JOIN users u ON u.id = s."ProviderID"
-		WHERE s."Kategori" = ?
-		LIMIT ? OFFSET ?
-	`
 	var services []models.Service
-	if err := config.DB.Raw(sql, userID, categoryName, limit, offset).Scan(&services).Error; err != nil {
+	var err error
+
+	if categoryName == "" || categoryName == "all" {
+		sql := `
+			SELECT
+				s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
+				s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
+				s.is_open, s.location, s.operational_hours, s.created_at,
+				COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url,
+				CASE WHEN ss.id IS NOT NULL THEN true ELSE false END AS "IsBookmarked"
+			FROM services s
+			LEFT JOIN saved_services ss ON s."JasaID" = ss.jasa_id AND ss.user_id = ?
+			LEFT JOIN users u ON u.id = s."ProviderID"
+			ORDER BY s."RatingRataRata" DESC
+			LIMIT ? OFFSET ?
+		`
+		err = config.DB.Raw(sql, userID, limit, offset).Scan(&services).Error
+	} else {
+		sql := `
+			SELECT
+				s."JasaID", s."ProviderID", s."Kategori", s."NamaJasa", s."DeskripsiJasa",
+				s."HargaMulai", s."RatingRataRata", s."JumlahProyekSelesai",
+				s.is_open, s.location, s.operational_hours, s.created_at,
+				COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '') AS image_url,
+				CASE WHEN ss.id IS NOT NULL THEN true ELSE false END AS "IsBookmarked"
+			FROM services s
+			LEFT JOIN saved_services ss ON s."JasaID" = ss.jasa_id AND ss.user_id = ?
+			LEFT JOIN users u ON u.id = s."ProviderID"
+			WHERE s."Kategori" = ?
+			LIMIT ? OFFSET ?
+		`
+		err = config.DB.Raw(sql, userID, categoryName, limit, offset).Scan(&services).Error
+	}
+
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch services"})
 		return
 	}

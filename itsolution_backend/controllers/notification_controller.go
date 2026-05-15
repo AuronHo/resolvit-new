@@ -17,10 +17,36 @@ func GetNotifications(c *gin.Context) {
 		return
 	}
 
+	// For rate_reminder notifications, join services to always use the current
+	// service name and avatar instead of the stale values stored at creation time.
+	sql := `
+		SELECT
+			n.id, n.user_id, n.is_read, n.type, n.ref_id, n.created_at,
+			CASE WHEN n.type = 'rate_reminder'
+				THEN 'How was your experience?'
+				ELSE n.title
+			END AS title,
+			CASE WHEN n.type = 'rate_reminder'
+				THEN 'Rate your experience with ' ||
+				     COALESCE(NULLIF(s."NamaJasa", ''), 'this service') ||
+				     '. Your feedback helps others find great service!'
+				ELSE n.description
+			END AS description,
+			CASE WHEN n.type = 'rate_reminder'
+				THEN COALESCE(NULLIF(s.image_url, ''), u.avatar_url, '')
+				ELSE n.avatar_url
+			END AS avatar_url
+		FROM notifications n
+		LEFT JOIN services s ON n.type = 'rate_reminder' AND s."JasaID" = n.ref_id
+		LEFT JOIN users u ON s."ProviderID" = u.id
+		WHERE n.user_id = ?
+		ORDER BY n.created_at DESC
+	`
 	var notifications []models.Notification
-	config.DB.Where("user_id = ?", userID).
-		Order("created_at DESC").
-		Find(&notifications)
+	if err := config.DB.Raw(sql, userID).Scan(&notifications).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load notifications"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{"results": notifications})
 }

@@ -96,6 +96,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       description: n['description'] ?? '',
                       avatarUrl: n['avatar_url'] ?? '',
                       isUnread: isUnread,
+                      type: n['type']?.toString() ?? '',
+                      refId: (n['ref_id'] as num?)?.toInt() ?? 0,
                     );
                   },
                 ),
@@ -110,10 +112,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
     required String description,
     required String avatarUrl,
     required bool isUnread,
+    required String type,
+    required int refId,
   }) {
     return InkWell(
       onTap: () {
         if (isUnread) _markRead(id, index);
+        if (type == 'rate_reminder' && refId > 0) {
+          Navigator.pushNamed(context, '/rate_service',
+              arguments: {'jasaId': refId});
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

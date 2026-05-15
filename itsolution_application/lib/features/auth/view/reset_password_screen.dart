@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../main_navigation/logic/theme_controller.dart'; 
+import '../../main_navigation/logic/theme_controller.dart';
 import '../../../constants/app_colors.dart';
+import '../../../services/api_service.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -32,7 +33,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     try {
       // Panggil API Golang (Ganti IP jika tidak pakai emulator)
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/forgot-password'),
+        Uri.parse('${ApiService.baseUrl}/api/forgot-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': email}),
       );

@@ -1,0 +1,14 @@
+# Environment — never commit secrets
+.env
+
+# Built binary
+server
+*.exe
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

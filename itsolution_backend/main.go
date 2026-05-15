@@ -6,6 +6,7 @@ import (
 	"itsolution-backend/middlewares"
 	"itsolution-backend/models"
 	"net/http"
+	"os"
 
 	"github.com/gin-gonic/gin"
 )
@@ -77,6 +78,7 @@ func main() {
 	r.PUT("/api/services/:id", controllers.UpdateService)
 	r.POST("/api/services/save", controllers.ToggleSaveService)
 	r.GET("/api/services/saved", controllers.GetSavedServices)
+	r.GET("/api/services/:id", controllers.GetServiceByID)
 
 	// Search (replaces Python backend)
 	r.GET("/api/search", controllers.SearchServices)
@@ -112,5 +114,9 @@ func main() {
 		})
 	})
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	r.Run(":" + port)
 }

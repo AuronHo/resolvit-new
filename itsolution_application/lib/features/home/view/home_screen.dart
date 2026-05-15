@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import 'widgets/service_card.dart';
 import '../../../services/api_service.dart';
+import '../../../utils/responsive.dart';
 import 'search_page.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -179,10 +180,16 @@ Future<void> _fetchRecommendations() async {
                     child: Center(child: CircularProgressIndicator()),
                   )
                 else
-                  ListView.builder(
-                    padding: const EdgeInsets.only(top: 10),
+                  GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: Responsive.isTablet(context) ? 2 : 1,
+                      mainAxisExtent: 150,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 8,
+                    ),
                     itemCount: _recommendations.length,
                     itemBuilder: (context, index) {
                       final item = _recommendations[index];
@@ -191,14 +198,14 @@ Future<void> _fetchRecommendations() async {
                         initialIsSaved: item['IsBookmarked'] == true,
                         title: item['NamaJasa'] ?? 'Jasa Tanpa Nama',
                         specialty: item['Kategori'] ?? 'Umum',
-                        price: item['HargaMulai'] != null 
-                            ? 'Rp ${item['HargaMulai']}' 
+                        price: item['HargaMulai'] != null
+                            ? 'Rp ${item['HargaMulai']}'
                             : 'Hubungi Kami',
                         rating: item['RatingRataRata']?.toString() ?? '0.0',
                         isOpen: item['IsOpen'] == true,
                         imageUrl: item['ImageUrl']?.toString() ?? '',
                         onTap: () {
-                           Navigator.pushNamed(context, '/service_detail', arguments: item);
+                          Navigator.pushNamed(context, '/service_detail', arguments: item);
                         },
                       );
                     },
@@ -217,14 +224,13 @@ Future<void> _fetchRecommendations() async {
   Widget _buildCategoryItem(IconData icon, String label) {
     return GestureDetector(
       onTap: () {
-         // 1. Bersihkan label (ubah "Phone\nService" jadi "Phone Service")
-         final categoryQuery = label.replaceAll('\n', ' ');
-         
-         // 2. Navigasi ke Category List membawa nama kategorinya
+            final categoryQuery = label == 'View All'
+             ? ''
+             : label.replaceAll('\n', ' ');
          Navigator.pushNamed(
-           context, 
-           '/category_list', 
-           arguments: categoryQuery
+           context,
+           '/category_list',
+           arguments: categoryQuery,
          );
       },
       child: Column(

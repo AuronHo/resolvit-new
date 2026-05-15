@@ -17,7 +17,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     // Durasi splash screen (misal 3 detik)
     Future.delayed(const Duration(seconds: 3), () {
-      Navigator.pushReplacementNamed(context, '/welcome');
+      if (mounted) Navigator.pushReplacementNamed(context, '/welcome');
     });
   }
 

@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-import '../../main_navigation/logic/theme_controller.dart'; 
+import '../../main_navigation/logic/theme_controller.dart';
 import '../../../constants/app_colors.dart';
+import '../../../services/api_service.dart';
 
 class NewPasswordScreen extends StatefulWidget {
   const NewPasswordScreen({super.key});
@@ -99,11 +100,12 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                   // BUTTON FINISH
                   ElevatedButton(
                     onPressed: _isLoading ? null : () async {
-                      // Ambil arguments dengan lebih aman
                       final Object? arguments = ModalRoute.of(context)!.settings.arguments;
-                      
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(context);
+
                       if (arguments is! Map) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Invalid data received')),
                         );
                         return;
@@ -112,16 +114,15 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                       final String email = arguments['email'] ?? '';
                       final String otp = arguments['otp'] ?? '';
 
-                      // Validasi input
                       if (_newPassController.text.isEmpty || _confirmPassController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Please fill all fields'), backgroundColor: Colors.red),
                         );
                         return;
                       }
 
                       if (_newPassController.text != _confirmPassController.text) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
                         );
                         return;
@@ -131,7 +132,7 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
 
                       try {
                         final response = await http.post(
-                          Uri.parse('http://10.0.2.2:8080/api/reset-password'),
+                          Uri.parse('${ApiService.baseUrl}/api/reset-password'),
                           headers: {'Content-Type': 'application/json'},
                           body: jsonEncode({
                             'email': email,
@@ -144,28 +145,26 @@ class _NewPasswordScreenState extends State<NewPasswordScreen> {
                         setState(() => _isLoading = false);
 
                         if (response.statusCode == 200) {
-                          // Berhasil! Bersihkan stack dan balik ke login
-                          Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                          
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          navigator.pushNamedAndRemoveUntil('/login', (route) => false);
+                          messenger.showSnackBar(
                             const SnackBar(
-                              content: Text('Password changed successfully! Please login.'), 
-                              backgroundColor: Colors.green
+                              content: Text('Password changed successfully! Please login.'),
+                              backgroundColor: Colors.green,
                             ),
                           );
                         } else {
                           final errorData = jsonDecode(response.body);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
-                              content: Text(errorData['error'] ?? 'Failed to reset password'), 
-                              backgroundColor: Colors.red
+                              content: Text(errorData['error'] ?? 'Failed to reset password'),
+                              backgroundColor: Colors.red,
                             ),
                           );
                         }
-                      } catch (e) {
+                      } catch (_) {
                         if (!mounted) return;
                         setState(() => _isLoading = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           const SnackBar(content: Text('Connection error to server'), backgroundColor: Colors.red),
                         );
                       }

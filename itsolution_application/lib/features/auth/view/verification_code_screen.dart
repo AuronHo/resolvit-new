@@ -4,7 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 
-import '../../main_navigation/logic/theme_controller.dart'; 
+import '../../main_navigation/logic/theme_controller.dart';
+import '../../../services/api_service.dart';
 
 
 class VerificationCodeScreen extends StatefulWidget {
@@ -64,22 +65,23 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
 
   Future<void> _resendCode() async {
     if (_userEmail == null) return;
+    final messenger = ScaffoldMessenger.of(context);
     try {
       final response = await http.post(
-        Uri.parse('http://10.0.2.2:8080/api/forgot-password'),
+        Uri.parse('${ApiService.baseUrl}/api/forgot-password'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'email': _userEmail}),
       );
       if (response.statusCode == 200) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(content: Text('New OTP code sent!'), backgroundColor: Colors.green),
         );
-        _startTimer(); // Reset timer ke 60 detik lagi
+        _startTimer();
       }
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         const SnackBar(content: Text('Failed to resend code'), backgroundColor: Colors.red),
       );
     }
@@ -187,7 +189,7 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
+                            color: Colors.black.withValues(alpha: 0.05),
                             blurRadius: 5,
                             offset: const Offset(0, 2),
                           )
@@ -244,14 +246,14 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
 
                 ElevatedButton(
                   onPressed: _isVerifying ? null : () async {
-                    // 1. Ambil email yang dioper dari layar sebelumnya
                     final String email = ModalRoute.of(context)!.settings.arguments as String;
+                    final navigator = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
 
-                    // 2. Gabungkan 6 angka dari controller
-                    String otpCode = _controllers.map((controller) => controller.text).join();
+                    final String otpCode = _controllers.map((c) => c.text).join();
 
                     if (otpCode.length < 6) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('Please enter the full 6-digit code')),
                       );
                       return;
@@ -260,43 +262,33 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
                     setState(() => _isVerifying = true);
 
                     try {
-                      // 3. Panggil API Verifikasi ke Golang (Endpoint baru yang kita bahas tadi)
                       final response = await http.post(
-                        Uri.parse('http://10.0.2.2:8080/api/verify-otp'),
+                        Uri.parse('${ApiService.baseUrl}/api/verify-otp'),
                         headers: {'Content-Type': 'application/json'},
-                        body: jsonEncode({
-                          'email': email,
-                          'otp': otpCode,
-                        }),
+                        body: jsonEncode({'email': email, 'otp': otpCode}),
                       );
 
                       if (!mounted) return;
                       setState(() => _isVerifying = false);
 
                       if (response.statusCode == 200) {
-                        // JIKA OTP BENAR -> Pindah ke layar Password Baru
-                        Navigator.pushNamed(
-                          context, 
+                        navigator.pushNamed(
                           '/new_password',
-                          arguments: {
-                            'email': email,
-                            'otp': otpCode,
-                          },
+                          arguments: {'email': email, 'otp': otpCode},
                         );
                       } else {
-                        // JIKA OTP SALAH -> Munculkan SnackBar Merah
                         final errorData = jsonDecode(response.body);
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        messenger.showSnackBar(
                           SnackBar(
-                            content: Text(errorData['error'] ?? 'Invalid OTP code'), 
-                            backgroundColor: Colors.red
+                            content: Text(errorData['error'] ?? 'Invalid OTP code'),
+                            backgroundColor: Colors.red,
                           ),
                         );
                       }
-                    } catch (e) {
+                    } catch (_) {
                       if (!mounted) return;
                       setState(() => _isVerifying = false);
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text('Connection error to server'), backgroundColor: Colors.red),
                       );
                     }

@@ -66,5 +66,9 @@ func PostReview(c *gin.Context) {
 
 	config.DB.Exec(`UPDATE services SET "RatingRataRata" = ? WHERE "JasaID" = ?`, avgRating, jasaID)
 
+	// Delete the rate_reminder notification for this user+service now that they've reviewed
+	config.DB.Where("user_id = ? AND type = ? AND ref_id = ?", input.UserID, "rate_reminder", jasaID).
+		Delete(&models.Notification{})
+
 	c.JSON(http.StatusCreated, gin.H{"message": "Review submitted", "review": review})
 }

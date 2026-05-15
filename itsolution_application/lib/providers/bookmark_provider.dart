@@ -15,7 +15,6 @@ class BookmarkProvider extends ChangeNotifier {
       final currentUserId = await ApiService.getCurrentUserId();
       
       if (currentUserId == null) {
-        print("User belum login, kosongkan saved list");
         _savedList = [];
         _isLoading = false;
         notifyListeners();
@@ -25,8 +24,7 @@ class BookmarkProvider extends ChangeNotifier {
       // 2. Gunakan ID asli untuk menarik data
       final response = await ApiService.getSavedServices(userId: currentUserId);
       _savedList = response['data'] ?? response['results'] ?? [];
-    } catch (e) {
-      print("Provider Error: $e");
+    } catch (_) {
     }
     _isLoading = false;
     notifyListeners();

@@ -352,7 +352,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       title: 'My Business Profile',
                       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                       onTap: () {
-                        Navigator.pushNamed(context, '/business_profile');
+                        Navigator.pushNamed(context, '/business_profile')
+                            .then((_) => _fetchProfileData());
                       },
                     ),
 

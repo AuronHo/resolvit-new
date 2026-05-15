@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // DITAMBAHKAN
+import 'package:provider/provider.dart';
 import '../../home/view/widgets/service_card.dart';
-import '../../../../providers/bookmark_provider.dart'; // DITAMBAHKAN (Pastikan path folder benar)
+import '../../../../providers/bookmark_provider.dart';
+import '../../../utils/responsive.dart';
 
 class SavedScreen extends StatefulWidget {
   const SavedScreen({super.key});
@@ -74,27 +75,30 @@ class _SavedScreenState extends State<SavedScreen> {
                 }
 
                 // 3. Tampilan Daftar Jasa
-                return ListView.builder(
-                  padding: const EdgeInsets.only(top: 20, bottom: 20),
+                return GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: Responsive.isTablet(context) ? 2 : 1,
+                    mainAxisExtent: 150,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 8,
+                  ),
                   itemCount: provider.savedList.length,
                   itemBuilder: (context, index) {
                     final item = provider.savedList[index];
                     final randomId = item['JasaID'] ?? index;
                     final bool hasImage = item['ImageUrl'] != null && item['ImageUrl'].toString().isNotEmpty;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
-                      child: ServiceCard(
-                        jasaId: item['JasaID'],
-                        initialIsSaved: true, // PENTING: Karena ini di layar Saved, pasti true
-                        title: item['NamaJasa'] ?? 'Tanpa Nama',
-                        specialty: item['Kategori'] ?? 'Umum',
-                        price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
-                        rating: item['RatingRataRata']?.toString() ?? '0.0',
-                        isOpen: item['IsOpen'] ?? true,
-                        imageUrl: hasImage ? item['ImageUrl'] : 'https://picsum.photos/seed/$randomId/320/240',
-                        onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
-                      ),
+                    return ServiceCard(
+                      jasaId: item['JasaID'],
+                      initialIsSaved: true,
+                      title: item['NamaJasa'] ?? 'Tanpa Nama',
+                      specialty: item['Kategori'] ?? 'Umum',
+                      price: item['HargaMulai'] != null ? 'Rp ${item['HargaMulai']}' : 'Hubungi Kami',
+                      rating: item['RatingRataRata']?.toString() ?? '0.0',
+                      isOpen: item['IsOpen'] ?? true,
+                      imageUrl: hasImage ? item['ImageUrl'] : 'https://picsum.photos/seed/$randomId/320/240',
+                      onTap: () => Navigator.pushNamed(context, '/service_detail', arguments: item),
                     );
                   },
                 );

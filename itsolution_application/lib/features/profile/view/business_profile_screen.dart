@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../main_navigation/logic/navigation_controller.dart';
 import '../../main_navigation/view/widgets/custom_bottom_nav_bar.dart';
 import '../../../services/api_service.dart';
-import '../../../providers/bookmark_provider.dart';
+import '../../../utils/responsive.dart';
 
 class BusinessProfileScreen extends StatefulWidget {
   const BusinessProfileScreen({super.key});
@@ -45,16 +44,16 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen>
     super.dispose();
   }
 
-  Future<void> _logout() async {
+  Future<void> _logoutBusiness() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('currentUserId');
-    await prefs.remove('jwt_token');
     await prefs.remove('business_user_id');
-    try { await GoogleSignIn.instance.signOut(); } catch (_) {}
     if (!mounted) return;
-    Provider.of<BookmarkProvider>(context, listen: false).clearData();
     Provider.of<NavigationController>(context, listen: false).setBusinessProfile(false);
-    Navigator.pushNamedAndRemoveUntil(context, '/welcome', (route) => false);
+    // Only pop if this screen was pushed as a named route (not embedded in the shell's IndexedStack).
+    // When embedded, setBusinessProfile(false) already switches the tab to ProfileScreen.
+    if (ModalRoute.of(context)?.settings.name == '/business_profile') {
+      Navigator.pop(context);
+    }
   }
 
   Future<void> _loadData() async {
@@ -142,7 +141,7 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen>
               if (value == 'personal') {
                 context.read<NavigationController>().setBusinessProfile(false);
               } else if (value == 'logout') {
-                _logout();
+                _logoutBusiness();
               }
             },
             itemBuilder: (_) => const [
@@ -359,8 +358,8 @@ class _BusinessProfileScreenState extends State<BusinessProfileScreen>
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: Responsive.isTablet(context) ? 3 : 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
           childAspectRatio: 0.85,
