@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String _devBase = 'http://10.0.2.2:8080';
-  static const String _prodBase = 'https://YOUR_PRODUCTION_SERVER_URL'; // TODO: set before release
+  static const String _prodBase = 'https://resolvit-new-production.up.railway.app';
 
   static String get _base => kReleaseMode ? _prodBase : _devBase;
   static String get baseUrl => _base;
