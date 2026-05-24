@@ -198,11 +198,11 @@ class _ServiceCardState extends State<ServiceCard> {
                       Expanded(
                         child: Text(
                           widget.title, // Berubah jadi widget.title
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 15,
                             color: Colors.black,
                           ),
                         ),

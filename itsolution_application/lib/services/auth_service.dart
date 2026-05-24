@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_service.dart';
 
 class AuthService {
-  // Ganti ke IP laptopmu jika pakai HP asli, tetap 10.0.2.2 jika pakai Emulator
-  final String baseUrl = "http://localhost:8080/api";
+  String get baseUrl => '${ApiService.baseUrl}/api';
 
   // Fungsi untuk Register (Sign Up)
   Future<Map<String, dynamic>> register(

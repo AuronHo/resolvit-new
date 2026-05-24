@@ -82,6 +82,7 @@ class AuthController extends ChangeNotifier {
   // Fungsi Login Dummy
   Future<bool> loginUser(String email, String password) async {
     try {
+      debugPrint('LOGIN URL: ${ApiService.baseUrl}/api/login');
       final response = await http.post(
         Uri.parse('${ApiService.baseUrl}/api/login'),
         headers: {"Content-Type": "application/json"},
@@ -129,7 +130,8 @@ class AuthController extends ChangeNotifier {
       } else {
         return false;
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('LOGIN ERROR: $e');
       return false;
     }
   }

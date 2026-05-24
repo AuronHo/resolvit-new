@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // 1. Imports for Logic/State
 import 'features/auth/logic/auth_controller.dart';
@@ -34,7 +35,9 @@ import 'features/profile/view/add_post_screen.dart';
 import 'features/profile/view/profile_screen.dart';
 import 'providers/bookmark_provider.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(
     MultiProvider(
       providers: [
