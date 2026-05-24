@@ -1,16 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String _devBase = 'http://10.0.2.2:8080';
-  static const String _prodBase =
-      'https://resolvit-new-production.up.railway.app';
-
-  static String get _base => kReleaseMode ? _prodBase : _devBase;
-  static String get baseUrl => _base;
+  static String get baseUrl =>
+      dotenv.env['API_BASE_URL'] ?? 'https://resolvit-new-production.up.railway.app';
 
   // ===========================================================================
   // AUTH HELPERS
@@ -48,7 +44,7 @@ class ApiService {
     final currentUserId = await getCurrentUserId();
     final userIdParam = currentUserId?.toString() ?? '0';
     final uri = Uri.parse(
-      '$_base/api/search?query=${Uri.encodeComponent(query)}&user_id=$userIdParam',
+      '$baseUrl/api/search?query=${Uri.encodeComponent(query)}&user_id=$userIdParam',
     );
 
     try {
@@ -71,7 +67,7 @@ class ApiService {
     final currentUserId = await getCurrentUserId();
     final userIdParam = currentUserId?.toString() ?? '0';
     final response = await http.get(
-      Uri.parse('$_base/api/services/recommendations?user_id=$userIdParam'),
+      Uri.parse('$baseUrl/api/services/recommendations?user_id=$userIdParam'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load recommendations');
@@ -84,7 +80,7 @@ class ApiService {
     final currentUserId = await getCurrentUserId();
     final userIdParam = currentUserId?.toString() ?? '0';
     final uri = Uri.parse(
-      '$_base/api/services/category?name=${Uri.encodeComponent(categoryName)}&page=$page&user_id=$userIdParam',
+      '$baseUrl/api/services/category?name=${Uri.encodeComponent(categoryName)}&page=$page&user_id=$userIdParam',
     );
     final response = await http.get(uri);
     if (response.statusCode == 200) return jsonDecode(response.body);
@@ -95,7 +91,7 @@ class ApiService {
     required int userId,
   }) async {
     final response = await http.get(
-      Uri.parse('$_base/api/services/saved?user_id=$userId'),
+      Uri.parse('$baseUrl/api/services/saved?user_id=$userId'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load saved services: ${response.body}');
@@ -106,7 +102,7 @@ class ApiService {
     required int jasaId,
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/services/save'),
+      Uri.parse('$baseUrl/api/services/save'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'user_id': userId, 'jasa_id': jasaId}),
     );
@@ -120,7 +116,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getReviews(int jasaId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/services/$jasaId/reviews'),
+      Uri.parse('$baseUrl/api/services/$jasaId/reviews'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load reviews');
@@ -133,7 +129,7 @@ class ApiService {
     required String comment,
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/services/$jasaId/reviews'),
+      Uri.parse('$baseUrl/api/services/$jasaId/reviews'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'user_id': userId,
@@ -151,7 +147,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getUserProfile({
     required int userId,
   }) async {
-    final response = await http.get(Uri.parse('$_base/api/users/$userId'));
+    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId'));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load profile');
   }
@@ -169,7 +165,7 @@ class ApiService {
       body['avatar_url'] = avatarUrl;
 
     final response = await http.put(
-      Uri.parse('$_base/api/users/$userId'),
+      Uri.parse('$baseUrl/api/users/$userId'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
@@ -178,7 +174,7 @@ class ApiService {
   }
 
   static Future<String> uploadAvatar(File imageFile) async {
-    final uri = Uri.parse('$_base/api/upload/avatar');
+    final uri = Uri.parse('$baseUrl/api/upload/avatar');
     final request = http.MultipartRequest('POST', uri);
     request.files.add(
       await http.MultipartFile.fromPath('avatar', imageFile.path),
@@ -202,7 +198,7 @@ class ApiService {
     required String avatarUrl,
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/auth/sync'),
+      Uri.parse('$baseUrl/api/auth/sync'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'name': name, 'email': email, 'avatar_url': avatarUrl}),
     );
@@ -229,7 +225,7 @@ class ApiService {
     required String password,
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/users/link-provider'),
+      Uri.parse('$baseUrl/api/users/link-provider'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'user_id': userId,
@@ -249,7 +245,7 @@ class ApiService {
   }) async {
     final registrantId = await getCurrentUserId();
     final response = await http.post(
-      Uri.parse('$_base/api/register/provider'),
+      Uri.parse('$baseUrl/api/register/provider'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'business_name': businessName,
@@ -268,14 +264,14 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getServiceById(int jasaId) async {
-    final response = await http.get(Uri.parse('$_base/api/services/$jasaId'));
+    final response = await http.get(Uri.parse('$baseUrl/api/services/$jasaId'));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Service not found');
   }
 
   static Future<Map<String, dynamic>> getMyService(int userId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/services/my?user_id=$userId'),
+      Uri.parse('$baseUrl/api/services/my?user_id=$userId'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('No service found');
@@ -299,7 +295,7 @@ class ApiService {
     if (location != null) body['location'] = location;
     if (operationalHours != null) body['operational_hours'] = operationalHours;
     final response = await http.put(
-      Uri.parse('$_base/api/services/$jasaId'),
+      Uri.parse('$baseUrl/api/services/$jasaId'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
     );
@@ -318,7 +314,7 @@ class ApiService {
     String operationalHours = '',
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/services'),
+      Uri.parse('$baseUrl/api/services'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'provider_id': providerId,
@@ -345,7 +341,7 @@ class ApiService {
     String imageUrl = '',
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/posts'),
+      Uri.parse('$baseUrl/api/posts'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'provider_id': providerId,
@@ -360,7 +356,7 @@ class ApiService {
 
   static Future<List<dynamic>> getPosts(int providerId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/posts?provider_id=$providerId'),
+      Uri.parse('$baseUrl/api/posts?provider_id=$providerId'),
     );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -380,7 +376,7 @@ class ApiService {
     required String jasaName,
   }) async {
     final response = await http.post(
-      Uri.parse('$_base/api/chats'),
+      Uri.parse('$baseUrl/api/chats'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'customer_id': customerId,
@@ -395,7 +391,7 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getChatRooms(int userId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/chats?user_id=$userId'),
+      Uri.parse('$baseUrl/api/chats?user_id=$userId'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load chats');
@@ -403,18 +399,18 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getChatMessages(int roomId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/chats/$roomId/messages'),
+      Uri.parse('$baseUrl/api/chats/$roomId/messages'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load messages');
   }
 
   static String chatWebSocketUrl(int roomId, int userId) {
-    if (kReleaseMode) {
-      final host = _prodBase.replaceFirst('https://', '');
-      return 'wss://$host/ws/chat/$roomId?user_id=$userId';
-    }
-    return 'ws://10.0.2.2:8080/ws/chat/$roomId?user_id=$userId';
+    final host = baseUrl
+        .replaceFirst('https://', '')
+        .replaceFirst('http://', '');
+    final scheme = baseUrl.startsWith('https') ? 'wss' : 'ws';
+    return '$scheme://$host/ws/chat/$roomId?user_id=$userId';
   }
 
   // ===========================================================================
@@ -423,13 +419,13 @@ class ApiService {
 
   static Future<Map<String, dynamic>> getNotifications(int userId) async {
     final response = await http.get(
-      Uri.parse('$_base/api/notifications?user_id=$userId'),
+      Uri.parse('$baseUrl/api/notifications?user_id=$userId'),
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load notifications');
   }
 
   static Future<void> markNotificationRead(int notificationId) async {
-    await http.put(Uri.parse('$_base/api/notifications/$notificationId/read'));
+    await http.put(Uri.parse('$baseUrl/api/notifications/$notificationId/read'));
   }
 }

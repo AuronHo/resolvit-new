@@ -13,3 +13,7 @@
 # OkHttp / HTTP
 -dontwarn okhttp3.**
 -dontwarn okio.**
+
+# Play Core (Flutter deferred components — not used, suppress R8 errors)
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
