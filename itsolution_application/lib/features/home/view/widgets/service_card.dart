@@ -252,7 +252,7 @@ class _ServiceCardState extends State<ServiceCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
 
                   // --- BARIS 4: HARGA ---
                   Text(
@@ -265,7 +265,7 @@ class _ServiceCardState extends State<ServiceCard> {
                     overflow: TextOverflow.ellipsis,
                   ),
 
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
 
                   // --- BARIS 5: STATUS JAM BUKA ---
                   Text(

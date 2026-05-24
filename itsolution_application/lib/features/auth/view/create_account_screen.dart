@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../logic/auth_controller.dart';
-import '../../main_navigation/logic/theme_controller.dart'; 
+import '../../main_navigation/logic/theme_controller.dart';
 import '../../../constants/app_colors.dart';
 
 class CreateAccountScreen extends StatefulWidget {

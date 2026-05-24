@@ -37,10 +37,8 @@ class AuthController extends ChangeNotifier {
 
   // 6. This logic was moved from the screen
   Future<void> launchTermsUrl() async {
-    final Uri url = Uri.parse('https://your-website.com/terms');
-    if (!await launchUrl(url)) {
-      // It's better to return an error or let the UI
-      // handle showing a SnackBar
+    final Uri url = Uri.parse('https://resolvit-privacy.netlify.app/');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       throw 'Could not launch $url';
     }
   }

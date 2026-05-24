@@ -6,7 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String _devBase = 'http://10.0.2.2:8080';
-  static const String _prodBase = 'https://resolvit-new-production.up.railway.app';
+  static const String _prodBase =
+      'https://resolvit-new-production.up.railway.app';
 
   static String get _base => kReleaseMode ? _prodBase : _devBase;
   static String get baseUrl => _base;
@@ -47,16 +48,14 @@ class ApiService {
     final currentUserId = await getCurrentUserId();
     final userIdParam = currentUserId?.toString() ?? '0';
     final uri = Uri.parse(
-        '$_base/api/search?query=${Uri.encodeComponent(query)}&user_id=$userIdParam');
+      '$_base/api/search?query=${Uri.encodeComponent(query)}&user_id=$userIdParam',
+    );
 
     try {
       final response = await http.get(uri).timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return {
-          'results': data['results'] ?? [],
-          'message': data['message'],
-        };
+        return {'results': data['results'] ?? [], 'message': data['message']};
       }
       throw Exception('Server error (${response.statusCode})');
     } catch (e) {
@@ -79,33 +78,40 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getServicesByCategory(
-      String categoryName,
-      {int page = 1}) async {
+    String categoryName, {
+    int page = 1,
+  }) async {
     final currentUserId = await getCurrentUserId();
     final userIdParam = currentUserId?.toString() ?? '0';
     final uri = Uri.parse(
-        '$_base/api/services/category?name=${Uri.encodeComponent(categoryName)}&page=$page&user_id=$userIdParam');
+      '$_base/api/services/category?name=${Uri.encodeComponent(categoryName)}&page=$page&user_id=$userIdParam',
+    );
     final response = await http.get(uri);
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load category');
   }
 
-  static Future<Map<String, dynamic>> getSavedServices(
-      {required int userId}) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/services/saved?user_id=$userId'));
+  static Future<Map<String, dynamic>> getSavedServices({
+    required int userId,
+  }) async {
+    final response = await http.get(
+      Uri.parse('$_base/api/services/saved?user_id=$userId'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load saved services: ${response.body}');
   }
 
-  static Future<void> toggleSaveService(
-      {required int userId, required int jasaId}) async {
+  static Future<void> toggleSaveService({
+    required int userId,
+    required int jasaId,
+  }) async {
     final response = await http.post(
       Uri.parse('$_base/api/services/save'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'user_id': userId, 'jasa_id': jasaId}),
     );
-    if (response.statusCode != 200) throw Exception('Failed to toggle bookmark');
+    if (response.statusCode != 200)
+      throw Exception('Failed to toggle bookmark');
   }
 
   // ===========================================================================
@@ -113,8 +119,9 @@ class ApiService {
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getReviews(int jasaId) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/services/$jasaId/reviews'));
+    final response = await http.get(
+      Uri.parse('$_base/api/services/$jasaId/reviews'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load reviews');
   }
@@ -141,10 +148,10 @@ class ApiService {
   // USERS / PROFILE
   // ===========================================================================
 
-  static Future<Map<String, dynamic>> getUserProfile(
-      {required int userId}) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/users/$userId'));
+  static Future<Map<String, dynamic>> getUserProfile({
+    required int userId,
+  }) async {
+    final response = await http.get(Uri.parse('$_base/api/users/$userId'));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load profile');
   }
@@ -158,7 +165,8 @@ class ApiService {
     final body = <String, dynamic>{};
     if (name != null && name.isNotEmpty) body['name'] = name;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    if (avatarUrl != null && avatarUrl.isNotEmpty) body['avatar_url'] = avatarUrl;
+    if (avatarUrl != null && avatarUrl.isNotEmpty)
+      body['avatar_url'] = avatarUrl;
 
     final response = await http.put(
       Uri.parse('$_base/api/users/$userId'),
@@ -172,7 +180,9 @@ class ApiService {
   static Future<String> uploadAvatar(File imageFile) async {
     final uri = Uri.parse('$_base/api/upload/avatar');
     final request = http.MultipartRequest('POST', uri);
-    request.files.add(await http.MultipartFile.fromPath('avatar', imageFile.path));
+    request.files.add(
+      await http.MultipartFile.fromPath('avatar', imageFile.path),
+    );
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode == 200) {
@@ -264,8 +274,9 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getMyService(int userId) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/services/my?user_id=$userId'));
+    final response = await http.get(
+      Uri.parse('$_base/api/services/my?user_id=$userId'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('No service found');
   }
@@ -282,7 +293,8 @@ class ApiService {
     final body = <String, dynamic>{};
     if (namaJasa != null && namaJasa.isNotEmpty) body['NamaJasa'] = namaJasa;
     if (kategori != null && kategori.isNotEmpty) body['Kategori'] = kategori;
-    if (deskripsi != null && deskripsi.isNotEmpty) body['DeskripsiJasa'] = deskripsi;
+    if (deskripsi != null && deskripsi.isNotEmpty)
+      body['DeskripsiJasa'] = deskripsi;
     if (hargaMulai != null && hargaMulai > 0) body['HargaMulai'] = hargaMulai;
     if (location != null) body['location'] = location;
     if (operationalHours != null) body['operational_hours'] = operationalHours;
@@ -347,8 +359,9 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getPosts(int providerId) async {
-    final response = await http
-        .get(Uri.parse('$_base/api/posts?provider_id=$providerId'));
+    final response = await http.get(
+      Uri.parse('$_base/api/posts?provider_id=$providerId'),
+    );
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
       return data['posts'] ?? [];
@@ -381,15 +394,17 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getChatRooms(int userId) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/chats?user_id=$userId'));
+    final response = await http.get(
+      Uri.parse('$_base/api/chats?user_id=$userId'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load chats');
   }
 
   static Future<Map<String, dynamic>> getChatMessages(int roomId) async {
-    final response =
-        await http.get(Uri.parse('$_base/api/chats/$roomId/messages'));
+    final response = await http.get(
+      Uri.parse('$_base/api/chats/$roomId/messages'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load messages');
   }
@@ -407,8 +422,9 @@ class ApiService {
   // ===========================================================================
 
   static Future<Map<String, dynamic>> getNotifications(int userId) async {
-    final response = await http
-        .get(Uri.parse('$_base/api/notifications?user_id=$userId'));
+    final response = await http.get(
+      Uri.parse('$_base/api/notifications?user_id=$userId'),
+    );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load notifications');
   }
