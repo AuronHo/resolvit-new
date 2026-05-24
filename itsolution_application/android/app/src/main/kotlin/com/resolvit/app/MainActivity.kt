@@ -1,4 +1,4 @@
-package com.example.itsolution_application
+package com.resolvit.app
 
 import io.flutter.embedding.android.FlutterActivity
 

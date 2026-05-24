@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"itsolution-backend/config"
 	"itsolution-backend/controllers"
 	"itsolution-backend/middlewares"
@@ -10,6 +11,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed static/terms.html
+var termsHTML []byte
 
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -40,12 +44,18 @@ func main() {
 		&models.ChatMessage{},
 		&models.Notification{},
 		&models.PortfolioPost{},
+		&models.SavedService{},
 	)
 
 	controllers.StartNotificationJob()
 
 	r := gin.Default()
 	r.Use(corsMiddleware())
+
+	// --- STATIC PAGES ---
+	r.GET("/terms", func(c *gin.Context) {
+		c.Data(http.StatusOK, "text/html; charset=utf-8", termsHTML)
+	})
 
 	// --- PUBLIC ROUTES ---
 	r.GET("/ping", func(c *gin.Context) { c.JSON(200, gin.H{"message": "Pong!"}) })

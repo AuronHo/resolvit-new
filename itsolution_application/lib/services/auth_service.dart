@@ -4,10 +4,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // Ganti ke IP laptopmu jika pakai HP asli, tetap 10.0.2.2 jika pakai Emulator
-  final String baseUrl = "http://10.0.2.2:8080/api";
+  final String baseUrl = "http://localhost:8080/api";
 
   // Fungsi untuk Register (Sign Up)
-  Future<Map<String, dynamic>> register(String name, String email, String password) async {
+  Future<Map<String, dynamic>> register(
+    String name,
+    String email,
+    String password,
+  ) async {
     final response = await http.post(
       Uri.parse('$baseUrl/register'),
       headers: {"Content-Type": "application/json"},
@@ -15,7 +19,7 @@ class AuthService {
         "name": name,
         "email": email,
         "password": password,
-        "role": "customer" // Default role
+        "role": "customer", // Default role
       }),
     );
     return jsonDecode(response.body);
@@ -26,12 +30,9 @@ class AuthService {
     final response = await http.post(
       Uri.parse('$baseUrl/login'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "email": email,
-        "password": password
-      }),
+      body: jsonEncode({"email": email, "password": password}),
     );
-    
+
     final data = jsonDecode(response.body);
     if (response.statusCode == 200) {
       // Langsung simpan token jika berhasil
