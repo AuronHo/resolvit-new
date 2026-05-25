@@ -79,6 +79,7 @@ func main() {
 
 	// Avatar upload
 	r.POST("/api/upload/avatar", controllers.UploadAvatar)
+	r.POST("/api/upload/chat-file", controllers.UploadChatFile)
 
 	// Services
 	r.GET("/api/services/recommendations", controllers.GetRecommendations)

@@ -78,3 +78,59 @@ func UploadAvatar(c *gin.Context) {
 	publicURL := fmt.Sprintf("%s/storage/v1/object/public/avatars/%s", supabaseURL, filename)
 	c.JSON(http.StatusOK, gin.H{"url": publicURL})
 }
+
+func UploadChatFile(c *gin.Context) {
+	file, header, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "file is required"})
+		return
+	}
+	defer file.Close()
+
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read file"})
+		return
+	}
+
+	supabaseURL := os.Getenv("SUPABASE_URL")
+	serviceKey := os.Getenv("SUPABASE_SERVICE_KEY")
+	if supabaseURL == "" || serviceKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Storage not configured"})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(header.Filename))
+	filename := fmt.Sprintf("chat_%d%s", time.Now().UnixNano(), ext)
+	uploadURL := fmt.Sprintf("%s/storage/v1/object/chat-files/%s", supabaseURL, filename)
+
+	contentType := header.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "application/octet-stream"
+	}
+
+	req, err := http.NewRequest("POST", uploadURL, bytes.NewReader(fileBytes))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create upload request"})
+		return
+	}
+	req.Header.Set("Authorization", "Bearer "+serviceKey)
+	req.Header.Set("Content-Type", contentType)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Upload failed: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Storage error %d: %s", resp.StatusCode, string(body))})
+		return
+	}
+
+	publicURL := fmt.Sprintf("%s/storage/v1/object/public/chat-files/%s", supabaseURL, filename)
+	c.JSON(http.StatusOK, gin.H{"url": publicURL})
+}

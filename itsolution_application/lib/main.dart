@@ -149,7 +149,7 @@ class MyApp extends StatelessWidget {
         '/setup_business_profile': (context) => const SetupBusinessProfileScreen(),
         '/business_profile': (context) => const BusinessProfileScreen(),
         '/business_view_details': (context) => const BusinessViewDetailsScreen(),
-        '/edit_business_details': (context) => const EditBusinessProfileScreen(),
+        '/edit_business_details': (context) => const EditBusinessProfileScreen(), // alias
         '/settings': (context) => const SettingsScreen(),
         '/edit_profile': (context) => const EditProfileScreen(),
         '/notification': (context) => const NotificationScreen(),

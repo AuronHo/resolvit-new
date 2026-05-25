@@ -68,7 +68,7 @@ class ApiService {
     final userIdParam = currentUserId?.toString() ?? '0';
     final response = await http.get(
       Uri.parse('$baseUrl/api/services/recommendations?user_id=$userIdParam'),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load recommendations');
   }
@@ -82,7 +82,7 @@ class ApiService {
     final uri = Uri.parse(
       '$baseUrl/api/services/category?name=${Uri.encodeComponent(categoryName)}&page=$page&user_id=$userIdParam',
     );
-    final response = await http.get(uri);
+    final response = await http.get(uri).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load category');
   }
@@ -92,7 +92,7 @@ class ApiService {
   }) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/services/saved?user_id=$userId'),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load saved services: ${response.body}');
   }
@@ -117,7 +117,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getReviews(int jasaId) async {
     final response = await http.get(
       Uri.parse('$baseUrl/api/services/$jasaId/reviews'),
-    );
+    ).timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load reviews');
   }
@@ -147,7 +147,8 @@ class ApiService {
   static Future<Map<String, dynamic>> getUserProfile({
     required int userId,
   }) async {
-    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId'));
+    final response = await http.get(Uri.parse('$baseUrl/api/users/$userId'))
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to load profile');
   }
@@ -171,6 +172,18 @@ class ApiService {
     );
     if (response.statusCode == 200) return jsonDecode(response.body);
     throw Exception('Failed to update profile');
+  }
+
+  static Future<String> uploadChatFile(String filePath, String fieldName) async {
+    final uri = Uri.parse('$baseUrl/api/upload/chat-file');
+    final request = http.MultipartRequest('POST', uri);
+    request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+    final streamed = await request.send();
+    final response = await http.Response.fromStream(streamed);
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['url'] as String;
+    }
+    throw Exception('Failed to upload chat file');
   }
 
   static Future<String> uploadAvatar(File imageFile) async {

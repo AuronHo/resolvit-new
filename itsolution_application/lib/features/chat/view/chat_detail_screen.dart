@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart' as fp;
+import 'package:image_picker/image_picker.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../../services/api_service.dart';
 
@@ -57,18 +60,28 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _channel = WebSocketChannel.connect(Uri.parse(url));
     _channel!.stream.listen(
       (data) {
-        final msg = jsonDecode(data as String);
-        if (mounted) {
-          setState(() {
-            _messages.add({
-              'isMe': msg['sender_id'] == widget.currentUserId,
-              'text': msg['content'] ?? '',
-              'time': _formatTime(msg['created_at']),
+        try {
+          final msg = jsonDecode(data as String);
+          if (msg is! Map) return;
+          if (mounted) {
+            setState(() {
+              _messages.add({
+                'isMe': msg['sender_id'] == widget.currentUserId,
+                'text': msg['content'] ?? '',
+                'time': _formatTime(msg['created_at']),
+              });
             });
-          });
+          }
+        } catch (_) {}
+      },
+      onError: (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Connection lost. Please reopen chat.'),
+                backgroundColor: Colors.red),
+          );
         }
       },
-      onError: (_) {},
       cancelOnError: false,
     );
   }
@@ -86,8 +99,107 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   void _sendMessage() {
     final text = _messageController.text.trim();
     if (text.isEmpty || _channel == null) return;
-    _channel!.sink.add(jsonEncode({'content': text}));
+    _channel?.sink.add(jsonEncode({'content': text}));
     _messageController.clear();
+  }
+
+  Future<void> _pickImage() async {
+    Navigator.pop(context);
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    if (picked == null) return;
+    try {
+      final url = await ApiService.uploadChatFile(picked.path, 'file');
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'isMe': true,
+            'text': '[img]$url[/img]',
+            'time': _formatTime(DateTime.now().toIso8601String()),
+          });
+        });
+      }
+      _channel?.sink.add(jsonEncode({'content': '[img]$url[/img]'}));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickFile() async {
+    Navigator.pop(context);
+    final result = await fp.FilePicker.pickFiles(withData: false);
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.path == null) return;
+    try {
+      final url = await ApiService.uploadChatFile(file.path!, 'file');
+      final content = '[file]${file.name}|$url[/file]';
+      if (mounted) {
+        setState(() {
+          _messages.add({
+            'isMe': true,
+            'text': content,
+            'time': _formatTime(DateTime.now().toIso8601String()),
+          });
+        });
+      }
+      _channel?.sink.add(jsonEncode({'content': content}));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Upload failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showAttachMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF4981FB),
+                  child: Icon(Icons.image, color: Colors.white),
+                ),
+                title: const Text('Image', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Send a photo from gallery'),
+                onTap: _pickImage,
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF34A853),
+                  child: Icon(Icons.attach_file, color: Colors.white),
+                ),
+                title: const Text('File', style: TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: const Text('Send a document or file'),
+                onTap: _pickFile,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -95,6 +207,42 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     _messageController.dispose();
     _channel?.sink.close();
     super.dispose();
+  }
+
+  Widget _buildMessageContent(String text, bool isMe) {
+    // Image tag: [img]url[/img]
+    if (text.startsWith('[img]') && text.endsWith('[/img]')) {
+      final url = text.substring(5, text.length - 6);
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(url, width: 200, fit: BoxFit.cover,
+          loadingBuilder: (_, child, progress) => progress == null
+              ? child
+              : const SizedBox(width: 200, height: 120,
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
+          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white54),
+        ),
+      );
+    }
+    // File tag: [file]name|url[/file]
+    if (text.startsWith('[file]') && text.endsWith('[/file]')) {
+      final inner = text.substring(6, text.length - 7);
+      final parts = inner.split('|');
+      final fileName = parts.isNotEmpty ? parts[0] : 'File';
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.insert_drive_file, color: isMe ? Colors.white : Colors.black54, size: 20),
+          const SizedBox(width: 6),
+          Flexible(child: Text(fileName,
+            style: TextStyle(color: isMe ? Colors.white : Colors.black,
+              fontSize: 13, fontWeight: FontWeight.w500))),
+        ],
+      );
+    }
+    // Plain text
+    return Text(text,
+      style: TextStyle(color: isMe ? Colors.white : Colors.black, fontSize: 14));
   }
 
   @override
@@ -185,22 +333,16 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                       ? CrossAxisAlignment.end
                                       : CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      msg['text'] ?? '',
-                                      style: TextStyle(
-                                          color: isMe
-                                              ? Colors.white
-                                              : Colors.black,
-                                          fontSize: 14),
-                                    ),
+                                    _buildMessageContent(msg['text'] ?? '', isMe),
                                     if ((msg['time'] ?? '').isNotEmpty)
-                                      Text(
-                                        msg['time'],
-                                        style: TextStyle(
-                                            color: isMe
-                                                ? Colors.white70
-                                                : Colors.grey,
-                                            fontSize: 10),
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 4),
+                                        child: Text(
+                                          msg['time'],
+                                          style: TextStyle(
+                                              color: isMe ? Colors.white70 : Colors.grey,
+                                              fontSize: 10),
+                                        ),
                                       ),
                                   ],
                                 ),
@@ -220,8 +362,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             color: Colors.white,
             child: Row(
               children: [
-                const Icon(Icons.add_circle_outline,
-                    size: 28, color: Colors.grey),
+                GestureDetector(
+                  onTap: _showAttachMenu,
+                  child: const Icon(Icons.add_circle_outline,
+                      size: 28, color: Colors.grey),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Container(
