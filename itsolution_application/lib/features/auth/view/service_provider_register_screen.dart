@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -203,19 +204,19 @@ class _ServiceProviderRegisterScreenState
                     const SizedBox(width: 12),
                     Flexible(
                       child: RichText(
-                        text: const TextSpan(
-                          // Added const for performance
+                        text: TextSpan(
                           text: 'Accept ',
-                          style: TextStyle(color: Colors.black),
+                          style: const TextStyle(color: Colors.black),
                           children: [
                             TextSpan(
                               text: 'Terms & Conditions',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Color(0xFF4981FB),
                                 fontWeight: FontWeight.bold,
                                 decoration: TextDecoration.underline,
                               ),
-                              // Note: You can re-add the recognizer here if needed
+                              recognizer: TapGestureRecognizer()
+                                ..onTap = () => context.read<AuthController>().launchTermsUrl(),
                             ),
                           ],
                         ),

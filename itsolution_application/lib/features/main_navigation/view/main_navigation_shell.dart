@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../logic/navigation_controller.dart';
@@ -10,8 +11,33 @@ import '../../profile/view/profile_screen.dart';
 import '../../profile/view/business_profile_screen.dart';
 import '../../../utils/responsive.dart';
 
-class MainNavigationShell extends StatelessWidget {
+class MainNavigationShell extends StatefulWidget {
   const MainNavigationShell({super.key});
+
+  @override
+  State<MainNavigationShell> createState() => _MainNavigationShellState();
+}
+
+class _MainNavigationShellState extends State<MainNavigationShell> {
+  DateTime? _lastBackPress;
+
+  Future<bool> _onWillPop() async {
+    final now = DateTime.now();
+    if (_lastBackPress == null ||
+        now.difference(_lastBackPress!) > const Duration(seconds: 2)) {
+      _lastBackPress = now;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Press back again to exit'),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return false;
+    }
+    SystemNavigator.pop();
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +77,22 @@ class MainNavigationShell extends StatelessWidget {
       );
     }
 
-    return Scaffold(
-      extendBody: true,
-      body: IndexedStack(
-        index: controller.selectedIndex,
-        children: screens,
-      ),
-      bottomNavigationBar: CustomBottomNavBar(
-        selectedIndex: controller.selectedIndex,
-        onTap: (index) =>
-            context.read<NavigationController>().setIndex(index),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _onWillPop();
+      },
+      child: Scaffold(
+        extendBody: true,
+        body: IndexedStack(
+          index: controller.selectedIndex,
+          children: screens,
+        ),
+        bottomNavigationBar: CustomBottomNavBar(
+          selectedIndex: controller.selectedIndex,
+          onTap: (index) =>
+              context.read<NavigationController>().setIndex(index),
+        ),
       ),
     );
   }

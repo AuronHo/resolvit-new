@@ -39,7 +39,7 @@ class AuthController extends ChangeNotifier {
   Future<void> launchTermsUrl() async {
     final Uri url = Uri.parse('https://resolvit-privacy.netlify.app/');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      throw 'Could not launch $url';
+      throw Exception('Could not launch $url');
     }
   }
 
@@ -68,7 +68,7 @@ class AuthController extends ChangeNotifier {
         if (token != null && userId != null) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('jwt_token', token);
-          await prefs.setInt('currentUserId', (userId as num).toInt());
+          await prefs.setInt('currentUserId', userId is int ? userId : (userId as num).toInt());
         }
         return null; // success
       }
@@ -100,13 +100,10 @@ class AuthController extends ChangeNotifier {
         int? userId;
 
         // Mengecek apakah data dibungkus objek "data" atau tidak
-        if (responseBody['data'] != null) {
-          token = responseBody['data']['token'];
-          userId = responseBody['data']['user_id'] ?? (responseBody['data']['user'] != null ? responseBody['data']['user']['id'] : null);
-        } else {
-          token = responseBody['token'];
-          userId = responseBody['user_id'] ?? (responseBody['user'] != null ? responseBody['user']['id'] : null);
-        }
+        final data = responseBody['data'] is Map ? responseBody['data'] : responseBody;
+        token = data['token'] as String?;
+        final rawId = data['user_id'] ?? (data['user'] is Map ? data['user']['id'] : null);
+        if (rawId != null) userId = rawId is int ? rawId : (rawId as num).toInt();
 
         // --- 2. SIMPAN KEDUANYA KE MEMORI HP ---
         if (token != null && userId != null) {
