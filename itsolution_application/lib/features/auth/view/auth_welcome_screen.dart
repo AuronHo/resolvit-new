@@ -65,7 +65,13 @@ class AuthWelcomeScreen extends StatelessWidget {
           );
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
