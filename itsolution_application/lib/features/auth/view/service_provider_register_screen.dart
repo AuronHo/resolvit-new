@@ -141,12 +141,17 @@ class _ServiceProviderRegisterScreenState
 
                 const SizedBox(height: 16),
 
-                _buildLabel('Business Email/Phone', textColor),
+                _buildLabel('Business Email', textColor),
                 _buildTextField(
                   controller: _businessEmailController,
                   hint: '',
                   fillColor: inputFill,
                   textColor: textColor,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Email is required';
+                    if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 16),
@@ -283,12 +288,13 @@ class _ServiceProviderRegisterScreenState
     required Color textColor,
     bool obscureText = false,
     Widget? suffixIcon,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       style: TextStyle(color: textColor),
-      validator: (value) => value!.isEmpty ? 'Required' : null,
+      validator: validator ?? (value) => value!.isEmpty ? 'Required' : null,
       decoration: InputDecoration(
         filled: true,
         fillColor: fillColor,
