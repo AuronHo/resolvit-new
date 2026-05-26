@@ -2,6 +2,9 @@
 .env
 .env.*.json
 
+android/app/google-services.json
+ios/GoogleService-Info.plist
+
 # Miscellaneous
 *.class
 *.log

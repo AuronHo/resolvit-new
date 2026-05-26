@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "182895082816",
+    "project_id": "resolvit-a0d62",
+    "storage_bucket": "resolvit-a0d62.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:182895082816:android:b37fde3784ce257e0c4ea5",
+        "android_client_info": {
+          "package_name": "com.resolvit.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLoT4sg_v824kWlQekKLh-iZRbQadBY5o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
