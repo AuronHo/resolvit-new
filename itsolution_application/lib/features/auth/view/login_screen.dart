@@ -115,12 +115,17 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 60),
 
                   // --- EMAIL / PHONE ---
-                  _buildLabel('Email/Phone', dynamicTextColor),
+                  _buildLabel('Email', dynamicTextColor),
                   _buildTextField(
                     controller: _emailController,
-                    hint: 'Enter your email or phone',
+                    hint: 'Enter your email',
                     fillColor: dynamicInputFill,
                     textColor: dynamicTextColor,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Email is required';
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
+                      return null;
+                    },
                   ),
 
                   const SizedBox(height: 20),
@@ -214,12 +219,13 @@ class _LoginScreenState extends State<LoginScreen> {
     required Color textColor,
     bool obscureText = false,
     Widget? suffixIcon,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       obscureText: obscureText,
       style: TextStyle(color: textColor),
-      validator: (value) {
+      validator: validator ?? (value) {
         if (value == null || value.isEmpty) return 'This field is required';
         return null;
       },

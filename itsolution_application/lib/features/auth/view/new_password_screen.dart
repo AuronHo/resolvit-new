@@ -14,12 +14,11 @@ class NewPasswordScreen extends StatefulWidget {
   State<NewPasswordScreen> createState() => _NewPasswordScreenState();
 }
 
-bool _isLoading = false;
-
 class _NewPasswordScreenState extends State<NewPasswordScreen> {
   final _newPassController = TextEditingController();
   final _confirmPassController = TextEditingController();
   bool _isObscure = true;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {

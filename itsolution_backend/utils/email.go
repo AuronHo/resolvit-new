@@ -1,30 +1,63 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/smtp"
 	"os"
 )
 
 func SendOTPEmail(targetEmail string, otp string) error {
-	// Ambil data dari .env
 	from := os.Getenv("SMTP_USER")
 	password := os.Getenv("SMTP_PASS")
-	smtpHost := "smtp.gmail.com"
-	smtpPort := "587"
 
-	// Susun Pesan
-	subject := "Subject: Reset Password Resolv IT\n"
-	body := fmt.Sprintf("Halo,\n\nKode OTP untuk reset password Anda adalah: %s\n\nKode ini akan kadaluarsa dalam 5 menit. Jangan berikan kode ini kepada siapapun.", otp)
-	message := []byte(subject + "\n" + body)
+	// DEV MODE: no credentials → print OTP to console
+	if from == "" || password == "" {
+		fmt.Printf("[DEV] OTP for %s: %s\n", targetEmail, otp)
+		return nil
+	}
 
-	// Autentikasi ke Google
-	auth := smtp.PlainAuth("", from, password, smtpHost)
+	host := "smtp.gmail.com"
+	port := "465"
 
-	// Kirim Email
-	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, []string{targetEmail}, message)
+	tlsConfig := &tls.Config{ServerName: host}
+
+	conn, err := tls.Dial("tcp", net.JoinHostPort(host, port), tlsConfig)
+	if err != nil {
+		return fmt.Errorf("tls dial: %w", err)
+	}
+	defer conn.Close()
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf("smtp client: %w", err)
+	}
+	defer client.Quit()
+
+	auth := smtp.PlainAuth("", from, password, host)
+	if err = client.Auth(auth); err != nil {
+		return fmt.Errorf("smtp auth: %w", err)
+	}
+
+	if err = client.Mail(from); err != nil {
+		return err
+	}
+	if err = client.Rcpt(targetEmail); err != nil {
+		return err
+	}
+
+	wc, err := client.Data()
 	if err != nil {
 		return err
 	}
-	return nil
+
+	msg := fmt.Sprintf(
+		"From: %s\r\nTo: %s\r\nSubject: Reset Password Resolv IT\r\n\r\nHalo,\r\n\r\nKode OTP untuk reset password Anda adalah: %s\r\n\r\nKode ini akan kadaluarsa dalam 5 menit.",
+		from, targetEmail, otp,
+	)
+	if _, err = fmt.Fprint(wc, msg); err != nil {
+		return err
+	}
+	return wc.Close()
 }

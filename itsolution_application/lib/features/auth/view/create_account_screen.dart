@@ -162,12 +162,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
                   const SizedBox(height: 16),
 
-                  _buildLabel('Email/Phone', dynamicTextColor),
+                  _buildLabel('Email', dynamicTextColor),
                   _buildTextField(
                     controller: _emailPhoneController,
                     hint: 'sule123@gmail.com',
                     fillColor: dynamicInputFill,
                     textColor: dynamicTextColor,
+                    validator: (value) {
+                      if (value == null || value.isEmpty) return 'Email is required';
+                      if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) return 'Enter a valid email';
+                      return null;
+                    },
                   ),
 
                   const SizedBox(height: 16),
