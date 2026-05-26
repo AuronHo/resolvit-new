@@ -11,64 +11,75 @@ import '../../../services/api_service.dart';
 
 class AuthWelcomeScreen extends StatelessWidget {
   const AuthWelcomeScreen({super.key});
-  
+
+  static final _googleSignIn = GoogleSignIn(
+    serverClientId: '182895082816-40v8uokf08824576b5gh409m07kenoev.apps.googleusercontent.com',
+    scopes: ['email', 'profile'],
+  );
+
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
-      await GoogleSignIn.instance.initialize(
-        serverClientId: '331772422234-7v78imkrihg9fgajvk9hf5qasneu3vdg.apps.googleusercontent.com',
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) return;
+
+      final response = await http.post(
+        Uri.parse('${ApiService.baseUrl}/api/auth/sync'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': googleUser.displayName ?? googleUser.email,
+          'email': googleUser.email,
+          'avatar_url': googleUser.photoUrl ?? '',
+        }),
       );
 
-      final GoogleSignInAccount googleUser = await GoogleSignIn.instance.authenticate();
+      if (!context.mounted) return;
 
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        final String? jwtToken = responseBody['token'];
+        final userId = responseBody['user'] != null
+            ? responseBody['user']['id']
+            : responseBody['user_id'];
 
-      if (idToken != null) {
-        final response = await http.post(
-          Uri.parse('${ApiService.baseUrl}/api/auth/google'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'id_token': idToken}),
+        if (jwtToken == null || userId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Server error. Try again.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', jwtToken);
+        await prefs.setInt(
+          'currentUserId',
+          userId is int ? userId : (userId as num).toInt(),
         );
 
         if (!context.mounted) return;
-
-        if (response.statusCode == 200) {
-          final responseBody = jsonDecode(response.body);
-
-          String? jwtToken;
-          int? userId;
-
-          if (responseBody['data'] != null) {
-            jwtToken = responseBody['data']['token'];
-            userId = responseBody['data']['user_id'] ?? (responseBody['data']['user'] != null ? responseBody['data']['user']['id'] : null);
-          } else {
-            jwtToken = responseBody['token'];
-            userId = responseBody['user_id'] ?? (responseBody['user'] != null ? responseBody['user']['id'] : null);
-          }
-
-          if (jwtToken == null || userId == null) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Terjadi kesalahan data dari server.'), backgroundColor: Colors.red),
-            );
-            return;
-          }
-
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('jwt_token', jwtToken.toString());
-          await prefs.setInt('currentUserId', userId);
-
-          if (!context.mounted) return;
-
-          Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacementNamed(context, '/home');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selamat Datang di Resolv IT!')),
+        );
+      } else {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Selamat Datang di Resolv IT!')),
+            const SnackBar(
+              content: Text('Login failed. Try again.'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Google Sign-In failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Google Sign-In failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -88,8 +99,8 @@ class AuthWelcomeScreen extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: isDark
-                ? [const Color(0xFF0F2027), const Color(0xFF2C5364)] 
-                : [kGradientTop, kGradientBottom], 
+                ? [const Color(0xFF0F2027), const Color(0xFF2C5364)]
+                : [kGradientTop, kGradientBottom],
           ),
         ),
         child: SafeArea(
@@ -99,29 +110,28 @@ class AuthWelcomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                
                 // 1. ADJUST TOP MARGIN (Moves "Resolv IT" up or down)
-                const SizedBox(height: 60), 
+                const SizedBox(height: 60),
 
                 // --- TITLE ---
                 Center(
                   child: RichText(
                     text: const TextSpan(
                       style: TextStyle(
-                        fontSize: 40, 
-                        color: Colors.white, 
-                        fontFamily: 'Roboto', 
+                        fontSize: 40,
+                        color: Colors.white,
+                        fontFamily: 'Roboto',
                         height: 1.0,
                       ),
                       children: [
                         TextSpan(
-                          text: 'Resolv', 
-                          style: TextStyle(fontWeight: FontWeight.w300), 
+                          text: 'Resolv',
+                          style: TextStyle(fontWeight: FontWeight.w300),
                         ),
                         TextSpan(text: ' '),
                         TextSpan(
-                          text: 'IT', 
-                          style: TextStyle(fontWeight: FontWeight.bold), 
+                          text: 'IT',
+                          style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -129,20 +139,20 @@ class AuthWelcomeScreen extends StatelessWidget {
                 ),
 
                 // 2. ADJUST GAP (Distance between Title and Logo)
-                const SizedBox(height: 100), 
+                const SizedBox(height: 100),
 
                 // --- LOGO ---
                 Center(
                   child: Image.asset(
-                    'assets/images/resolvit_logo.png', 
+                    'assets/images/resolvit_logo.png',
                     // 3. ADJUST LOGO HEIGHT (Make it taller/shorter here)
-                    height: 300, 
+                    height: 300,
                     fit: BoxFit.contain,
                   ),
                 ),
 
                 // This spacer takes up all remaining space to push buttons to bottom
-                const Spacer(), 
+                const Spacer(),
 
                 // --- BUTTONS ---
                 Padding(
@@ -151,10 +161,10 @@ class AuthWelcomeScreen extends StatelessWidget {
                     children: [
                       ElevatedButton.icon(
                         onPressed: () {
-                          _handleGoogleSignIn(context);// Google Sign In Logic
+                          _handleGoogleSignIn(context); // Google Sign In Logic
                         },
                         icon: Image.asset(
-                          'assets/images/google_logo.png', 
+                          'assets/images/google_logo.png',
                           height: 24,
                         ),
                         label: const Text('Continue with Google'),
@@ -162,7 +172,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                           backgroundColor: Colors.white,
                           foregroundColor: Colors.black87,
                           elevation: 3,
-                          minimumSize: const Size(double.infinity, 50), 
+                          minimumSize: const Size(double.infinity, 50),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
@@ -198,7 +208,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       "Already have an account? ",
-                      style: TextStyle(color: Colors.grey[600]), 
+                      style: TextStyle(color: Colors.grey[600]),
                     ),
                     GestureDetector(
                       onTap: () {
@@ -208,7 +218,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                       child: const Text(
                         "Log In",
                         style: TextStyle(
-                          color: kPrimaryBlue, 
+                          color: kPrimaryBlue,
                           fontWeight: FontWeight.bold,
                           decoration: TextDecoration.underline,
                           decorationColor: kPrimaryBlue,
@@ -217,7 +227,7 @@ class AuthWelcomeScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                
+
                 const SizedBox(height: 30),
               ],
             ),

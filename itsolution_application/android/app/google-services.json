@@ -12,7 +12,20 @@
           "package_name": "com.resolvit.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "182895082816-nei8pmmbjlkdkvclvk24jfet87jb3t4p.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.resolvit.app",
+            "certificate_hash": "a7515b66f0cebe0a52b99601d490a4f56f5ccb18"
+          }
+        },
+        {
+          "client_id": "182895082816-40v8uokf08824576b5gh409m07kenoev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyBLoT4sg_v824kWlQekKLh-iZRbQadBY5o"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "182895082816-40v8uokf08824576b5gh409m07kenoev.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
