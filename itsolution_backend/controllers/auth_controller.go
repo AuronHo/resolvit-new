@@ -133,7 +133,7 @@ func ForgotPassword(c *gin.Context) {
 
 	err := utils.SendOTPEmail(user.Email, otp)
 	if err != nil {
-		fmt.Printf("[SMTP ERROR] %v\n", err)
+		fmt.Printf("[EMAIL ERROR] %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal mengirim email: " + err.Error()})
 		return
 	}

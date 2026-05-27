@@ -49,21 +49,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       setState(() => _isLoading = false);
 
       if (response.statusCode == 200) {
-        // Berhasil kirim OTP
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Verification code sent to $email'), 
-            backgroundColor: Colors.green
-          ),
+          SnackBar(content: Text('Verification code sent to $email'), backgroundColor: Colors.green),
         );
-        
-        // Pindah ke halaman input kode verifikasi & password baru
-        // Kita kirim email-nya sebagai argument agar layar berikutnya tahu email siapa yang di-reset
-        Navigator.pushNamed(
-          context, 
-          '/verification_code', 
-          arguments: email
-        );
+        Navigator.pushNamed(context, '/verification_code', arguments: email);
       } else {
         // Gagal (Misal: masalah server)
         final errorData = jsonDecode(response.body);
