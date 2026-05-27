@@ -19,6 +19,8 @@ class AuthWelcomeScreen extends StatelessWidget {
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
+      // Force sign out first so account picker always appears
+      await _googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return;
 
@@ -66,8 +68,8 @@ class AuthWelcomeScreen extends StatelessWidget {
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login failed. Try again.'),
+            SnackBar(
+              content: Text('Login failed (${response.statusCode}): ${response.body}'),
               backgroundColor: Colors.red,
             ),
           );
