@@ -77,7 +77,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await prefs.remove('business_user_id');
 
       // 3. Logout dari Google (Jika user pakai Google Sign-In)
-      try { await GoogleSignIn.instance.signOut(); } catch (_) {}
+      try { await GoogleSignIn(scopes: ['email', 'profile']).disconnect(); } catch (_) {}
 
       // 4. Bersihkan data 'Saved' dari Provider agar tidak membekas
       if (context.mounted) {

@@ -222,12 +222,21 @@ func SyncGoogleUser(c *gin.Context) {
 	}
 
 	var user models.User
-	result := config.DB.Where("email = ?", input.Email).FirstOrCreate(&user, models.User{
-		Name:      input.Name,
-		Email:     input.Email,
-		AvatarUrl: input.AvatarUrl,
-		Role:      "customer",
-	})
+	result := config.DB.Where("email = ?", input.Email).First(&user)
+	if result.Error != nil {
+		// New user — create with Google data
+		user = models.User{
+			Name:      input.Name,
+			Email:     input.Email,
+			AvatarUrl: input.AvatarUrl,
+			Role:      "customer",
+		}
+		result = config.DB.Create(&user)
+	}
+	// Existing user — preserve their name, only update avatar if empty
+	if user.AvatarUrl == "" && input.AvatarUrl != "" {
+		config.DB.Model(&user).Update("avatar_url", input.AvatarUrl)
+	}
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Gagal sinkronisasi data user"})
