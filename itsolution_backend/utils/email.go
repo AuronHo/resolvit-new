@@ -1,63 +1,58 @@
 package utils
 
 import (
-	"crypto/tls"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net"
-	"net/smtp"
+	"net/http"
 	"os"
 )
 
 func SendOTPEmail(targetEmail string, otp string) error {
-	from := os.Getenv("SMTP_USER")
-	password := os.Getenv("SMTP_PASS")
+	apiKey := os.Getenv("RESEND_API_KEY")
 
-	// DEV MODE: no credentials → print OTP to console
-	if from == "" || password == "" {
+	// DEV MODE: no key → print OTP to console
+	if apiKey == "" {
 		fmt.Printf("[DEV] OTP for %s: %s\n", targetEmail, otp)
 		return nil
 	}
 
-	host := "smtp.gmail.com"
-	port := "465"
-
-	tlsConfig := &tls.Config{ServerName: host}
-
-	conn, err := tls.Dial("tcp", net.JoinHostPort(host, port), tlsConfig)
-	if err != nil {
-		return fmt.Errorf("tls dial: %w", err)
-	}
-	defer conn.Close()
-
-	client, err := smtp.NewClient(conn, host)
-	if err != nil {
-		return fmt.Errorf("smtp client: %w", err)
-	}
-	defer client.Quit()
-
-	auth := smtp.PlainAuth("", from, password, host)
-	if err = client.Auth(auth); err != nil {
-		return fmt.Errorf("smtp auth: %w", err)
+	from := os.Getenv("RESEND_FROM")
+	if from == "" {
+		from = "onboarding@resend.dev" // default Resend test address
 	}
 
-	if err = client.Mail(from); err != nil {
-		return err
-	}
-	if err = client.Rcpt(targetEmail); err != nil {
-		return err
+	payload := map[string]interface{}{
+		"from":    from,
+		"to":      []string{targetEmail},
+		"subject": "Reset Password Resolv IT",
+		"text": fmt.Sprintf(
+			"Halo,\n\nKode OTP untuk reset password Anda adalah: %s\n\nKode ini akan kadaluarsa dalam 5 menit. Jangan berikan kode ini kepada siapapun.",
+			otp,
+		),
 	}
 
-	wc, err := client.Data()
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return err
 	}
 
-	msg := fmt.Sprintf(
-		"From: %s\r\nTo: %s\r\nSubject: Reset Password Resolv IT\r\n\r\nHalo,\r\n\r\nKode OTP untuk reset password Anda adalah: %s\r\n\r\nKode ini akan kadaluarsa dalam 5 menit.",
-		from, targetEmail, otp,
-	)
-	if _, err = fmt.Fprint(wc, msg); err != nil {
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(body))
+	if err != nil {
 		return err
 	}
-	return wc.Close()
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("resend API error: status %d", resp.StatusCode)
+	}
+	return nil
 }
